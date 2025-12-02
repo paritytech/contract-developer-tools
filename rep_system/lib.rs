@@ -1,18 +1,21 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
+
+
 #[ink::contract]
 mod rep_system {
-    use ink::{storage::Mapping};
-    use shared::{ContextId, EntityId, ReputationContext};
+    use ink::{env::emit_event, storage::Mapping};
+    use shared::{ContextId, EntityId};
+    use shared::events::RatingSubmitted; 
+    use shared::errors::Error;
 
     #[ink(storage)]
     pub struct RepSystem {
-        /**
-         * TODO! how to get `ReputationContext` to work here? in place of `u8`
-         */
-        contexts: Vec<u8>,
-        
-        pub scores: Mapping<EntityId, u64>,
-        pub last_updated: Mapping<EntityId, u32>,
+
+        // owner of a context to restrict rating submission
+        pub owners: Mapping<ContextId, Address>,
+        pub calculators: Mapping<ContextId, Address>,
+        pub scores: Mapping<(ContextId, EntityId), (Timestamp, u64)>,
+        pub last_updated: Mapping<(ContextId, EntityId), u32>,
 
     }
 
@@ -23,38 +26,57 @@ mod rep_system {
         #[ink(constructor)]
         pub fn new(init_value: bool) -> Self {
             Self { 
-                contexts: vec![], 
+                owners: Mapping::default(),
+                calculators: Mapping::default(),
                 scores: Mapping::default(), 
                 last_updated: Mapping::default() 
             }
         }
 
+
+        pub fn register_context(&self, context: ContextId, owner: Address) -> Result<(), Error> {
+            if self.owners.contains(context) {
+                return Err(Error::ContextAlreadyExists)
+            }
+            self.owners.insert(context, &owner);
+
+            emit_event(ContextCreated {
+                context: context,
+                owner: owner,
+                time: self.env().block_timestamp()
+            });
+        }
+
+
         /**
          * does this need to exist?
          */
-        #[ink(message)]
-        pub fn register_calculator(&mut self) {
-            self.contexts.push(0);
-        }
+        //#[ink(message)]
+        //pub fn register_calculator(&mut self) {
+        //    
+        //}
 
-        /**
-         * Create a new reputation context
-         */
-        #[ink(message)]
-        pub fn create_context(&mut self) -> ContextId {
-            unimplemented!("create_context")
-        }
 
         /**
          * A user within a context submits a rating
          * - how does this handle aggregation?
-         * - do we we 
+         * - do we
          *      - store all individual ratings?
          *      - store just base scores and aggregated scores are calculated as queried? or 
          *      - does `submit_rating` cascade updates to dependent scores?
          */
+        /*
+         function submitRating(
+        address targetUser,
+        bytes32 entityId,
+        bytes32 entityType,
+        uint32 rating,
+        bytes memory proof
+    )
+         */
+
         #[ink(message)]
-        pub fn submit_rating(&mut self, context: ContextId) -> () {
+        pub fn submit_rating(&mut self, context: ContextId, user: Address, item: EntityId) -> () {
             unimplemented!("submit_rating")
         }
 
@@ -62,7 +84,7 @@ mod rep_system {
          * Get rating (recursively from heirarchical context)
          */
         #[ink(message)]
-        pub fn get_rating(&self, entity: EntityId) -> u64 {
+        pub fn get_rating(&self, context: ContextId, entity: EntityId) -> u64 {
             unimplemented!("get_rating")
         }
 
@@ -70,7 +92,7 @@ mod rep_system {
          * Get the `EntityId` associated with an `Address` (user)
          */
         #[ink(message)]
-        pub fn get_user_id(&self, user: Address, context: ContextId) -> EntityId {
+        pub fn get_user_id(&self, context: ContextId, user: Address) -> EntityId {
             unimplemented!("get_user_id")
         }
     }
@@ -87,6 +109,8 @@ mod rep_system {
 
     #[cfg(test)]
     mod tests {
+        use ink::{Address, U256, env::address};
+
         /// Imports all the definitions from the outer scope so we can use them here.
         use super::*;
 
@@ -96,9 +120,12 @@ mod rep_system {
         #[ink::test]
         fn it_works() {
             let mut rep_system = RepSystem::new(false);
-            assert_eq!(rep_system.get_rating(EntityId::default()), 0);
-            rep_system.create_context();
-            assert_eq!(rep_system.get_rating(EntityId::default()), 0);
+            let ctx = [1; 32];
+            let ent_id = [42; 32];
+            let owner = Address::from([2; 20]);
+            assert_eq!(rep_system.get_rating(ctx, ent_id), 0); 
+            rep_system.register_context(ctx, owner);
+            assert_eq!(rep_system.get_rating(ctx, ent_id), 0);
         }
     }
 

@@ -6,7 +6,11 @@ use ink::storage::Mapping;
 
 /// 1:1 with `bytes32` in Solidity
 pub type EntityId = [u8; 32];
+pub type EntityType =[u8; 32];
 pub type ContextId = [u8; 32];
+
+pub mod errors;
+pub mod events;
 
 #[ink::storage_item]
 #[derive(Default)]
@@ -45,7 +49,7 @@ pub trait ReputationCalculator {
     fn validate_transaction_proof(
         &self,
         rater: Address,
-        ratee: Address,
+        ratee: Address, // is this
         proof: Vec<u8>,
     ) -> bool;
 
@@ -81,6 +85,19 @@ pub trait ReputationCalculator {
     // ) -> u64;
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
