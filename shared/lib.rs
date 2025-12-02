@@ -2,6 +2,86 @@
 
 use ink::prelude::vec::Vec;
 use ink::Address;
+use ink::storage::Mapping;
+
+/// 1:1 with `bytes32` in Solidity
+pub type EntityId = [u8; 32];
+
+#[ink::storage_item]
+#[derive(Default)]
+pub struct ReputationContext {
+    pub scores: Mapping<EntityId, u64>,
+    pub last_updated: Mapping<EntityId, u32>,
+
+    pub user_ids: Mapping<Address, EntityId>,
+    pub hierarchies: Mapping<EntityId, Vec<EntityId>>,
+
+    pub calculator_ptr: Address,
+    pub calculator_constants: Vec<u8>,
+
+    // pub decay_enabled: bool,
+    // pub decay_half_life: u32,
+
+    /// uint32 totalRatings;
+    pub total_ratings: u32,
+}
+
+#[ink::trait_definition]
+pub trait ReputationCalculator {
+
+    /**
+     * what is this function intended to do?
+     */
+    #[ink(message)]
+    fn validate_transaction_proof(
+        &self,
+        rater: Address,
+        ratee: Address,
+        proof: Vec<u8>,
+    ) -> bool;
+
+    /**
+     * Calculate a reputation score given some domain-specific payload
+     */
+    #[ink(message)]
+    fn calculate_score(
+        &self,
+        payload: Vec<u8>,
+    ) -> u64;
+
+    /**
+     * Calculate an aggregate score given child scores and weights
+     * 
+     * side-note: how does panicking work in contracts? for example
+     * if a calculator overflows summing the child_scores together
+     */
+    #[ink(message)]
+    fn aggregate_hierarchical(
+        &self,
+        child_scores: Vec<u64>,
+        weights: Vec<u32>,
+    ) -> u64;
+
+    // Optional decay (dApp can "disable" by returning `score` unchanged)
+    // #[ink(message)]
+    // fn apply_decay(
+    //     &self,
+    //     score: u64,
+    //     elapsed_time: u32,
+    //     half_life: u32,
+    // ) -> u64;
+
+}
+
+
+
+
+
+/**
+ * 
+ * vvv  SAMPLE CONTRACT CODE  vvv
+ * 
+ */
 
 pub type CardId = u32;
 pub type GameId = u32;

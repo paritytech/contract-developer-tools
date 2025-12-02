@@ -1,7 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
+// mod base_calculator;
+use shared::{ReputationContext, ReputationCalculator, EntityId};
+
 #[ink::contract]
 mod rep_system {
+    use shared::ReputationContext;
+
 
     /// Defines the storage of your contract.
     /// Add new fields to the below struct in order
@@ -9,14 +14,19 @@ mod rep_system {
     #[ink(storage)]
     pub struct RepSystem {
         /// Stores a single `bool` value on the storage.
-        value: bool,
+        contexts: Vec<u8>,
     }
 
     impl RepSystem {
         /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
         pub fn new(init_value: bool) -> Self {
-            Self { value: init_value }
+            Self { contexts: vec![] }
+        }
+
+        #[ink(message)]
+        pub fn register_calculator(&mut self) {
+            self.contexts.push(0);
         }
 
         /// A message that can be called on instantiated contracts.
@@ -24,13 +34,13 @@ mod rep_system {
         /// to `false` and vice versa.
         #[ink(message)]
         pub fn flip(&mut self) {
-            self.value = !self.value;
+            self.contexts.push(0);
         }
 
         /// Simply returns the current value of our `bool`.
         #[ink(message)]
         pub fn get(&self) -> bool {
-            self.value
+            self.contexts.len() > 0
         }
     }
 
