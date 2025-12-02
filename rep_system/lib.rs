@@ -1,64 +1,104 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-
-// mod base_calculator;
-use shared::{ReputationContext, ReputationCalculator, EntityId};
-
 #[ink::contract]
 mod rep_system {
-    use shared::ReputationContext;
+    use ink::{storage::Mapping};
+    use shared::{ContextId, EntityId, ReputationContext};
 
-
-    /// Defines the storage of your contract.
-    /// Add new fields to the below struct in order
-    /// to add new static storage fields to your contract.
     #[ink(storage)]
     pub struct RepSystem {
-        /// Stores a single `bool` value on the storage.
+        /**
+         * TODO! how to get `ReputationContext` to work here? in place of `u8`
+         */
         contexts: Vec<u8>,
+        
+        pub scores: Mapping<EntityId, u64>,
+        pub last_updated: Mapping<EntityId, u32>,
+
     }
 
     impl RepSystem {
-        /// Constructor that initializes the `bool` value to the given `init_value`.
+        /**
+         * 
+         */
         #[ink(constructor)]
         pub fn new(init_value: bool) -> Self {
-            Self { contexts: vec![] }
+            Self { 
+                contexts: vec![], 
+                scores: Mapping::default(), 
+                last_updated: Mapping::default() 
+            }
         }
 
+        /**
+         * does this need to exist?
+         */
         #[ink(message)]
         pub fn register_calculator(&mut self) {
             self.contexts.push(0);
         }
 
-        /// A message that can be called on instantiated contracts.
-        /// This one flips the value of the stored `bool` from `true`
-        /// to `false` and vice versa.
+        /**
+         * Create a new reputation context
+         */
         #[ink(message)]
-        pub fn flip(&mut self) {
-            self.contexts.push(0);
+        pub fn create_context(&mut self) -> ContextId {
+            unimplemented!("create_context")
         }
 
-        /// Simply returns the current value of our `bool`.
+        /**
+         * A user within a context submits a rating
+         * - how does this handle aggregation?
+         * - do we we 
+         *      - store all individual ratings?
+         *      - store just base scores and aggregated scores are calculated as queried? or 
+         *      - does `submit_rating` cascade updates to dependent scores?
+         */
         #[ink(message)]
-        pub fn get(&self) -> bool {
-            self.contexts.len() > 0
+        pub fn submit_rating(&mut self, context: ContextId) -> () {
+            unimplemented!("submit_rating")
+        }
+
+        /**
+         * Get rating (recursively from heirarchical context)
+         */
+        #[ink(message)]
+        pub fn get_rating(&self, entity: EntityId) -> u64 {
+            unimplemented!("get_rating")
+        }
+
+        /**
+         * Get the `EntityId` associated with an `Address` (user)
+         */
+        #[ink(message)]
+        pub fn get_user_id(&self, user: Address, context: ContextId) -> EntityId {
+            unimplemented!("get_user_id")
         }
     }
 
-    /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
-    /// module and test functions are marked with a `#[test]` attribute.
-    /// The below code is technically just normal Rust code.
+
+
+
+    /**
+     * 
+     * vvv  SAMPLE CONTRACT CODE  vvv
+     * 
+     */
+
+
     #[cfg(test)]
     mod tests {
         /// Imports all the definitions from the outer scope so we can use them here.
         use super::*;
 
-        /// We test a simple use case of our contract.
+        /**
+         * Sample dummy test
+         */
         #[ink::test]
         fn it_works() {
             let mut rep_system = RepSystem::new(false);
-            assert_eq!(rep_system.get(), false);
-            rep_system.flip();
-            assert_eq!(rep_system.get(), true);
+            assert_eq!(rep_system.get_rating(EntityId::default()), 0);
+            rep_system.create_context();
+            assert_eq!(rep_system.get_rating(EntityId::default()), 0);
         }
     }
 

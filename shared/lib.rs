@@ -6,12 +6,17 @@ use ink::storage::Mapping;
 
 /// 1:1 with `bytes32` in Solidity
 pub type EntityId = [u8; 32];
+pub type ContextId = [u8; 32];
 
 #[ink::storage_item]
 #[derive(Default)]
 pub struct ReputationContext {
-    pub scores: Mapping<EntityId, u64>,
-    pub last_updated: Mapping<EntityId, u32>,
+    /**
+     * I think `scores` and `last_updated` should be stored flattly in 
+     * `ReputationContext`. and then here we only store a registry of `EntityId`s
+     * 
+     * This would make it easier to have cross-context reputation queries/aggregation
+     */
 
     pub user_ids: Mapping<Address, EntityId>,
     pub hierarchies: Mapping<EntityId, Vec<EntityId>>,
@@ -19,6 +24,10 @@ pub struct ReputationContext {
     pub calculator_ptr: Address,
     pub calculator_constants: Vec<u8>,
 
+    /**
+     * These should be configured in some calculator
+     * no need for hardcoded reference to decay here
+     */
     // pub decay_enabled: bool,
     // pub decay_half_life: u32,
 
