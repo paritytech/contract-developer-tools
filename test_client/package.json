@@ -12,6 +12,11 @@
     "packageManager": "pnpm@10.17.1",
     "dependencies": {
         "@polkadot-api/descriptors": "file:.papi/descriptors",
+        "@polkadot-api/sdk-ink": "^0.6.0",
+        "@polkadot-labs/hdkd": "^0.0.25",
+        "@polkadot-labs/hdkd-helpers": "^0.0.26",
+        "@polkadot/api": "^16.5.3",
+        "@polkadot/util-crypto": "^13.5.9",
         "polkadot-api": "^1.22.0"
     }
 }

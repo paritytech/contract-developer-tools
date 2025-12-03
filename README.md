@@ -12,4 +12,13 @@ Intellisense on code should begin to work after building and the rust-analyzer f
 
 ### Deploy & Test Manually
 
-!TODO
+#### Setting up test client
+
+In `test_client` directory:
+
+```
+pnpm papi ink add ../target/ink/rep_system/rep_system.contract
+pnpm papi add -w wss://testnet-passet-hub.polkadot.io passet
+
+bun index.ts
+```
