@@ -2,6 +2,7 @@
 #[ink::contract]
 mod rep_system {
     use ink::{storage::Mapping};
+    use ink::prelude::vec::Vec; // <-- import Vec from ink prelude
     use shared::{ContextId, EntityId, ReputationContext};
 
     #[ink(storage)]
@@ -23,7 +24,7 @@ mod rep_system {
         #[ink(constructor)]
         pub fn new(init_value: bool) -> Self {
             Self { 
-                contexts: vec![], 
+                contexts: Vec::new(),
                 scores: Mapping::default(), 
                 last_updated: Mapping::default() 
             }
@@ -42,7 +43,8 @@ mod rep_system {
          */
         #[ink(message)]
         pub fn create_context(&mut self) -> ContextId {
-            unimplemented!("create_context")
+            self.contexts.push(0);
+            ContextId::default()
         }
 
         /**
