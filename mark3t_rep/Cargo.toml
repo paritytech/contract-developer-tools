@@ -1,12 +1,18 @@
 [package]
-name = "shared"
+name = "mark3t_rep"
 version = "0.1.0"
+authors = ["[your_name] <[your_email]>"]
 edition = "2024"
 
 [dependencies]
 ink = { git = "https://github.com/use-ink/ink", tag = "v6.0.0-beta.1", version = "6.0.0-beta.1", default-features = false, features = ["unstable-hostfn"] }
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2.6", default-features = false, features = ["derive"], optional = true }
+shared = { path = "../shared", default-features = false }
+rep_system = { path = "../rep_system", default-features = false, features = ["ink-as-dependency"] }
+
+[dev-dependencies]
+ink_e2e = { git = "https://github.com/use-ink/ink", tag = "v6.0.0-beta.1", version = "6.0.0-beta.1" }
 
 [lib]
 path = "lib.rs"
@@ -17,5 +23,16 @@ std = [
     "ink/std",
     "scale/std",
     "scale-info/std",
+    "rep_system/std",
 ]
 ink-as-dependency = []
+e2e-tests = []
+
+[package.metadata.ink-lang]
+abi = "ink"
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    'cfg(ink_abi, values("ink", "sol", "all"))'
+]

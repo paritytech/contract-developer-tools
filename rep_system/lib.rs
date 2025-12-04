@@ -1,12 +1,16 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-
 #[ink::contract]
 mod rep_system {
-    use ink::{env::emit_event, storage::Mapping};
-    use shared::{ContextId, EntityId};
-    use shared::{RatingSubmitted, ContextCreated}; 
-    use shared::Error;
+    
+    use ink::prelude::vec::Vec;
+    use ink::{env::emit_event, storage::{Mapping, StorageVec}};
+    use shared::*;
+
+    type RatingKey = (ContextId, TransactionId, EntityType);
+    type ScoreKey = (ContextId, EntityId);
+
+    
 
     #[ink(storage)]
     pub struct RepSystem {
@@ -14,30 +18,32 @@ mod rep_system {
         // owner of a context to restrict rating submission
         pub owners: Mapping<ContextId, Address>,
         pub calculators: Mapping<ContextId, Address>,
-        pub scores: Mapping<(ContextId, EntityId), (Timestamp, u64)>,
-        pub last_updated: Mapping<(ContextId, EntityId), u32>,
+
+        pub ratings: Mapping<RatingKey, Rating>,
+        pub relations: Mapping<(ContextId, EntityType), Vec<EntityType>>,
+        pub scores: Mapping<ScoreKey, u8>
 
     }
 
     impl RepSystem {
-        /**
-         * 
-         */
+
         #[ink(constructor)]
         pub fn new() -> Self {
             Self { 
                 owners: Mapping::default(),
                 calculators: Mapping::default(),
-                scores: Mapping::default(), 
-                last_updated: Mapping::default() 
+                ratings: Mapping::default(), 
+                relations: Mapping::default(),
+                scores: Mapping::default()
             }
         }
 
 
-        pub fn register_context(&mut self, context: ContextId, owner: Address) -> Result<(), Error> {
+        pub fn register_context(&mut self, context: ContextId) -> Result<(), Error> {
             if self.owners.contains(context) {
                 return Err(Error::ContextAlreadyExists)
             }
+            let owner = self.env().caller();
             self.owners.insert(context, &owner);
 
             emit_event(ContextCreated {
@@ -49,63 +55,54 @@ mod rep_system {
         }
 
 
-        /**
-         * does this need to exist?
-         */
-        //#[ink(message)]
-        //pub fn register_calculator(&mut self) {
-        //    
-        //}
-
-
-        /**
-         * A user within a context submits a rating
-         * - how does this handle aggregation?
-         * - do we
-         *      - store all individual ratings?
-         *      - store just base scores and aggregated scores are calculated as queried? or 
-         *      - does `submit_rating` cascade updates to dependent scores?
-         */
-        /*
-         function submitRating(
-        address targetUser,
-        bytes32 entityId,
-        bytes32 entityType,
-        uint32 rating,
-        bytes memory proof
-    )
-         */
-
         #[ink(message)]
-        pub fn submit_rating(&mut self, context: ContextId, user: Address, item: EntityId) -> () {
-            unimplemented!("submit_rating")
+        pub fn submit_rating(&mut self, context: ContextId, transaction: TransactionId, typ: EntityType, rating: Rating) -> Result<(), Error> {
+            self.check_owner(context)?;
+
+            let key: RatingKey = (context, transaction, typ);
+            if self.ratings.contains(key) {
+                return Err(Error::TransactionAlreadyRated);
+            }
+
+            self.ratings.insert(key, &rating); // TODO try_insert
+            
+            emit_event(RatingSubmitted { 
+                context: context, 
+                user: rating.0,
+                timestamp: rating.2,
+                entity_id: rating.1, 
+                entity_type: typ, 
+                rating: rating.3, 
+                remark: rating.4 });
+
+            Ok(())
         }
 
-        /**
-         * Get rating (recursively from heirarchical context)
-         */
+
         #[ink(message)]
-        pub fn get_rating(&self, context: ContextId, entity: EntityId) -> u64 {
-            unimplemented!("get_rating")
+        pub fn get_score(&self, context: ContextId, entity: EntityId) -> Score {
+            // TODO also checkOwner??
+            let key: ScoreKey = (context, entity);
+
+            match self.scores.get(key) {
+                Some(score) => return score,
+                None => return NO_RATING
+            }
         }
 
-        /**
-         * Get the `EntityId` associated with an `Address` (user)
-         */
-        #[ink(message)]
-        pub fn get_user_id(&self, context: ContextId, user: Address) -> EntityId {
-            unimplemented!("get_user_id")
+        fn check_owner(&self, context: ContextId) -> Result<(), Error> {
+            match self.owners.get(context) {
+                Some(owner) => 
+                    if self.env().caller() != owner {
+                        return Err(Error::NotOwner);
+                    } else { return Ok(()) },
+                None => return Err(Error::ContextNotFound)
+            }
+
         }
+
     }
 
-
-
-
-    /**
-     * 
-     * vvv  SAMPLE CONTRACT CODE  vvv
-     * 
-     */
 
 
     #[cfg(test)]
@@ -121,12 +118,13 @@ mod rep_system {
         #[ink::test]
         fn it_works() {
             let mut rep_system = RepSystem::new();
-            let ctx = [1; 32];
+            let ctx = 1;
             let ent_id = [42; 32];
-            let owner = Address::from([2; 20]);
-            assert_eq!(rep_system.get_rating(ctx, ent_id), 0); 
-            rep_system.register_context(ctx, owner);
-            assert_eq!(rep_system.get_rating(ctx, ent_id), 0);
+            //let owner = Address::from([2; 20]);
+            assert_eq!(rep_system.get_score(ctx, ent_id), NO_RATING); 
+            rep_system.register_context(ctx);
+            assert_eq!(rep_system.get_score(ctx, ent_id), NO_RATING);
+
         }
     }
 
@@ -150,8 +148,10 @@ mod rep_system {
         /// We test that we can read and write a value from the on-chain contract.
         #[ink_e2e::test]
         async fn it_works(mut client: ink_e2e::Client<C, E>) -> E2EResult<()> {
+
+            println!("E2E Test!!!!!!!!!!!!!!!!!");
             // Given
-            let mut constructor = RepSystemRef::new(false);
+            let mut constructor = RepSystemRef::new();
             let contract = client
                 .instantiate("rep_system", &ink_e2e::bob(), &mut constructor)
                 .submit()
@@ -180,3 +180,5 @@ mod rep_system {
         }
     }
 }
+
+pub use self::rep_system::RepSystem;
