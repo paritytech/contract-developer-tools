@@ -5,8 +5,8 @@
 mod rep_system {
     use ink::{env::emit_event, storage::Mapping};
     use shared::{ContextId, EntityId};
-    use shared::events::RatingSubmitted; 
-    use shared::errors::Error;
+    use shared::{RatingSubmitted, ContextCreated}; 
+    use shared::Error;
 
     #[ink(storage)]
     pub struct RepSystem {
@@ -24,7 +24,7 @@ mod rep_system {
          * 
          */
         #[ink(constructor)]
-        pub fn new(init_value: bool) -> Self {
+        pub fn new() -> Self {
             Self { 
                 owners: Mapping::default(),
                 calculators: Mapping::default(),
@@ -34,7 +34,7 @@ mod rep_system {
         }
 
 
-        pub fn register_context(&self, context: ContextId, owner: Address) -> Result<(), Error> {
+        pub fn register_context(&mut self, context: ContextId, owner: Address) -> Result<(), Error> {
             if self.owners.contains(context) {
                 return Err(Error::ContextAlreadyExists)
             }
@@ -45,6 +45,7 @@ mod rep_system {
                 owner: owner,
                 time: self.env().block_timestamp()
             });
+            return Ok(())
         }
 
 
@@ -109,7 +110,7 @@ mod rep_system {
 
     #[cfg(test)]
     mod tests {
-        use ink::{Address, U256, env::address};
+        use ink::{Address, env::address};
 
         /// Imports all the definitions from the outer scope so we can use them here.
         use super::*;
@@ -119,7 +120,7 @@ mod rep_system {
          */
         #[ink::test]
         fn it_works() {
-            let mut rep_system = RepSystem::new(false);
+            let mut rep_system = RepSystem::new();
             let ctx = [1; 32];
             let ent_id = [42; 32];
             let owner = Address::from([2; 20]);
