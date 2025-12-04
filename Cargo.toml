@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "rep_system",
     "shared",
+    "contexts/market"
 ]
 
 [workspace.dependencies]
