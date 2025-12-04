@@ -14,7 +14,11 @@ Intellisense on code should begin to work after building and the rust-analyzer f
 
 #### Setting up test client
 
+Deploy to Paseo with `bash ./scripts/set-deploy.sh`
+
 In `test_client` directory:
+
+update `contractAddr` in `index.ts`
 
 ```
 pnpm papi ink add ../target/ink/rep_system/rep_system.contract
