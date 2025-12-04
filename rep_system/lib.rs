@@ -2,7 +2,7 @@
 
 #[ink::contract]
 mod rep_system {
-    
+
     use ink::prelude::vec::Vec;
     use ink::{env::emit_event, storage::{Mapping, StorageVec}};
     use shared::*;
@@ -10,7 +10,6 @@ mod rep_system {
     type RatingKey = (ContextId, TransactionId, EntityType);
     type ScoreKey = (ContextId, EntityId);
 
-    
 
     #[ink(storage)]
     pub struct RepSystem {
@@ -159,12 +158,16 @@ mod rep_system {
                 .expect("instantiate failed");
             let mut call_builder = contract.call_builder::<RepSystem>();
 
-            let get = call_builder.get();
+            let ctx: u64 = 1;
+            /*
+             
+            let get = call_builder.register_context(ctx);
             let get_result = client.call(&ink_e2e::bob(), &get).dry_run().await?;
             assert!(matches!(get_result.return_value(), false));
+            */
 
             // When
-            let flip = call_builder.flip();
+            let flip = call_builder.get_score(ctx, [1; 32]);
             let _flip_result = client
                 .call(&ink_e2e::bob(), &flip)
                 .submit()
@@ -172,9 +175,10 @@ mod rep_system {
                 .expect("flip failed");
 
             // Then
-            let get = call_builder.get();
+            
+            let get = call_builder.get_score(ctx, [1; 32]);
             let get_result = client.call(&ink_e2e::bob(), &get).dry_run().await?;
-            assert!(matches!(get_result.return_value(), true));
+            assert!(matches!(get_result.return_value(), 0));
 
             Ok(())
         }

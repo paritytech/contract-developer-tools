@@ -33,11 +33,11 @@ mod mark3t_rep {
     impl Mark3tRep {
 
         #[ink(constructor)]
-        pub fn Mark3tRep(rep_system_address: ink::Address) -> Self {
+        pub fn new(rep_system_address: ink::Address) -> Self {
             let rep_system = RepSystemRef::new()
+            .code_hash(rep_system_address.into())
             /*
 
-                .code_hash(other_contract_code_hash)
                 .endowment(0.into())
                 .salt_bytes(Some([1u8; 32]))
                 .ref_time_limit(ref_time_limit)
