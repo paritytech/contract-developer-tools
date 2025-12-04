@@ -1,12 +1,56 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use ink::prelude::vec::Vec;
+use ink::prelude::{vec::Vec, string::String};
 use ink::Address;
 use ink::storage::Mapping;
 
 /// 1:1 with `bytes32` in Solidity
 pub type EntityId = [u8; 32];
 pub type ContextId = [u8; 32];
+
+
+/**
+ * 
+ */
+#[ink::storage_item(packed)]
+#[derive(Default)]
+pub struct ProductReview {
+    pub rating: u8,
+    pub comment: String,
+}
+
+/**
+ * 
+ */
+#[ink::storage_item(packed)]
+#[derive(Default)]
+pub struct SellerReview {
+    pub rating: u8,
+    pub comment: String,
+}
+
+/**
+ * 
+ */
+#[ink::storage_item(packed)]
+#[derive(Default)]
+pub struct ProductMetadata {
+    pub average_score: u64,
+    pub total_ratings: u32,
+}
+
+/**
+ * Aggregated data for a seller
+ */
+#[ink::storage_item(packed)]
+#[derive(Default)]
+pub struct SellerMetadata {
+    pub average_score: u64,
+    pub total_ratings: u32,
+
+    pub average_product_score: u64,
+    pub total_products: u32,
+}
 
 #[ink::storage_item]
 #[derive(Default)]
