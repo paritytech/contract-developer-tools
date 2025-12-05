@@ -25,10 +25,27 @@ mod market {
     #[ink(storage)]
     pub struct Market {
         
+        /**
+         * An individual review for a product by a customer.
+         * Each customer can only submit one review per product.
+         */
         pub product_reviews: Mapping<(ProductId, CustomerId), ProductReview>,
+        
+        /**
+         * Aggregated metrics for a product
+         */
         pub product_metadata: Mapping<ProductId, ProductMetadata>,
 
+        /**
+         * An individual review for a seller by a customer.
+         * Each customer can only submit one review per seller.
+         */
         pub seller_reviews: Mapping<(SellerId, CustomerId), SellerReview>,
+
+        /**
+         * Aggregated metrics for a seller 
+         * (dependant on both seller & product reviews)
+         */
         pub seller_metadata: Mapping<SellerId, SellerMetadata>,
 
         pub product_sellers_index: Mapping<ProductId, SellerId>,
@@ -62,7 +79,6 @@ mod market {
         #[ink(message)]
         pub fn submit_product_review(&mut self, product: ProductId, review: ProductReview) {
             let customer: CustomerId = self.env().caller();
-            unimplemented!("submit_review")
         }
 
         /**
@@ -80,12 +96,12 @@ mod market {
 
         #[ink(message)]
         pub fn get_product_metadata(&self, product: ProductId) -> ProductMetadata {
-            unimplemented!("get_product_metadata")
+            ProductMetadata::default()
         }
 
         #[ink(message)]
         pub fn get_seller_metadata(&self, seller: SellerId) -> SellerMetadata {
-            unimplemented!("get_seller_metadata")
+            SellerMetadata::default()
         }
     }
 
@@ -110,9 +126,9 @@ mod market {
         #[ink::test]
         fn it_works() {
             let mut market = Market::new();
-            assert_eq!(market.get_product_metadata(EntityId::default()), 0);
-            market.create_context();
-            assert_eq!(market.get_product_metadata(EntityId::default()), 0);
+            assert_eq!(market.get_product_metadata(EntityId::default()), ProductMetadata::default());
+            market.submit_product_review(EntityId::default(), ProductReview::default());
+            assert_eq!(market.get_product_metadata(EntityId::default()), ProductMetadata::default());
         }
     }
 

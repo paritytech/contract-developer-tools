@@ -32,8 +32,9 @@ pub struct SellerReview {
 /**
  * 
  */
-#[ink::storage_item(packed)]
-#[derive(Default)]
+#[derive(Default, Clone)]
+#[cfg_attr(feature = "std", derive(Debug, PartialEq, Eq, ink::storage::traits::StorageLayout))]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub struct ProductMetadata {
     pub average_score: u64,
     pub total_ratings: u32,
@@ -42,8 +43,9 @@ pub struct ProductMetadata {
 /**
  * Aggregated data for a seller
  */
-#[ink::storage_item(packed)]
-#[derive(Default)]
+#[derive(Default, Clone)]
+#[cfg_attr(feature = "std", derive(Debug, PartialEq, Eq, ink::storage::traits::StorageLayout))]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub struct SellerMetadata {
     pub average_score: u64,
     pub total_ratings: u32,
