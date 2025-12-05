@@ -4,9 +4,9 @@
 #[ink::contract]
 mod market {
     use ink::{storage::Mapping};
-    use ink::prelude::{vec, vec::Vec, string::String};
+    use ink::prelude::vec::Vec;
     // <-- import Vec from ink prelude
-    use shared::{ContextId, EntityId, ProductMetadata, ProductReview, SellerMetadata, SellerReview};
+    use shared::{ProductMetadata, ProductReview, SellerMetadata, SellerReview};
     /// Event emitted when a context is created.
     #[ink(event)]
     pub struct ContextCreated {
@@ -53,6 +53,65 @@ mod market {
     }
 
     impl Market {
+        /// Recalculate a running average when a rating is inserted or replaced.
+        fn updated_average(
+            current_average: u64,
+            current_total: u32,
+            previous_rating: Option<u8>,
+            new_rating: u8,
+        ) -> (u64, u32) {
+            let total_u64 = current_total as u64;
+            match previous_rating {
+                Some(old) if current_total > 0 => {
+                    let sum = current_average
+                        .saturating_mul(total_u64)
+                        .saturating_sub(old as u64)
+                        .saturating_add(new_rating as u64);
+                    (sum / total_u64, current_total)
+                }
+                Some(_) => (new_rating as u64, 1),
+                None => {
+                    let new_total = total_u64 + 1;
+                    let sum = current_average
+                        .saturating_mul(total_u64)
+                        .saturating_add(new_rating as u64);
+                    (sum / new_total, new_total as u32)
+                }
+            }
+        }
+
+        fn update_seller_product_average(
+            &mut self,
+            seller: SellerId,
+            old_product_average: u64,
+            old_product_total: u32,
+            new_product_average: u64,
+        ) {
+            let mut seller_meta = self.seller_metadata.get(&seller).unwrap_or_default();
+            if old_product_total == 0 {
+                let current_products = seller_meta.total_products as u64;
+                let new_total_products = current_products + 1;
+                let sum = seller_meta
+                    .average_product_score
+                    .saturating_mul(current_products)
+                    .saturating_add(new_product_average);
+                seller_meta.average_product_score = sum / new_total_products;
+                seller_meta.total_products = new_total_products as u32;
+            } else if seller_meta.total_products > 0 {
+                let total_products = seller_meta.total_products as u64;
+                let sum = seller_meta
+                    .average_product_score
+                    .saturating_mul(total_products)
+                    .saturating_sub(old_product_average)
+                    .saturating_add(new_product_average);
+                seller_meta.average_product_score = sum / total_products;
+            } else {
+                seller_meta.average_product_score = new_product_average;
+                seller_meta.total_products = 1;
+            }
+            self.seller_metadata.insert(&seller, &seller_meta);
+        }
+
         /**
          * 
          */
@@ -79,6 +138,37 @@ mod market {
         #[ink(message)]
         pub fn submit_product_review(&mut self, product: ProductId, review: ProductReview) {
             let customer: CustomerId = self.env().caller();
+            let previous_review = self.product_reviews.get(&(product, customer));
+            let old_product_meta = self.product_metadata.get(&product).unwrap_or_default();
+
+            self.product_reviews.insert(&(product, customer), &review);
+
+            if previous_review.is_none() {
+                let mut reviewers = self.product_review_index.get(&product).unwrap_or_default();
+                reviewers.push(customer);
+                self.product_review_index.insert(&product, &reviewers);
+            }
+
+            let (average_score, total_ratings) = Self::updated_average(
+                old_product_meta.average_score,
+                old_product_meta.total_ratings,
+                previous_review.as_ref().map(|r| r.rating),
+                review.rating,
+            );
+            let updated_meta = ProductMetadata {
+                average_score,
+                total_ratings,
+            };
+            self.product_metadata.insert(&product, &updated_meta);
+
+            if let Some(seller) = self.product_sellers_index.get(&product) {
+                self.update_seller_product_average(
+                    seller,
+                    old_product_meta.average_score,
+                    old_product_meta.total_ratings,
+                    updated_meta.average_score,
+                );
+            }
         }
 
         /**
@@ -91,17 +181,35 @@ mod market {
         #[ink(message)]
         pub fn submit_seller_review(&mut self, seller: SellerId, review: SellerReview) {
             let customer: CustomerId = self.env().caller();
-            unimplemented!("submit_seller_review")
+            let previous_review = self.seller_reviews.get(&(seller, customer));
+            let existing_meta = self.seller_metadata.get(&seller).unwrap_or_default();
+
+            self.seller_reviews.insert(&(seller, customer), &review);
+
+            let (average_score, total_ratings) = Self::updated_average(
+                existing_meta.average_score,
+                existing_meta.total_ratings,
+                previous_review.as_ref().map(|r| r.rating),
+                review.rating,
+            );
+
+            let updated_meta = SellerMetadata {
+                average_score,
+                total_ratings,
+                average_product_score: existing_meta.average_product_score,
+                total_products: existing_meta.total_products,
+            };
+            self.seller_metadata.insert(&seller, &updated_meta);
         }
 
         #[ink(message)]
         pub fn get_product_metadata(&self, product: ProductId) -> ProductMetadata {
-            ProductMetadata::default()
+            self.product_metadata.get(&product).unwrap_or_default()
         }
 
         #[ink(message)]
         pub fn get_seller_metadata(&self, seller: SellerId) -> SellerMetadata {
-            SellerMetadata::default()
+            self.seller_metadata.get(&seller).unwrap_or_default()
         }
     }
 
@@ -124,11 +232,157 @@ mod market {
          * Sample dummy test
          */
         #[ink::test]
-        fn it_works() {
+        fn product_review_updates_metadata_and_index() {
             let mut market = Market::new();
-            assert_eq!(market.get_product_metadata(EntityId::default()), ProductMetadata::default());
-            market.submit_product_review(EntityId::default(), ProductReview::default());
-            assert_eq!(market.get_product_metadata(EntityId::default()), ProductMetadata::default());
+            let product = [1u8; 32];
+            let seller = [2u8; 32];
+            let customer = Address::from_low_u64_be(1);
+            market.product_sellers_index.insert(&product, &seller);
+
+            ink::env::test::set_caller(customer);
+            market.submit_product_review(
+                product,
+                ProductReview {
+                    rating: 4,
+                    comment: String::from("good"),
+                },
+            );
+
+            let meta = market.get_product_metadata(product);
+            assert_eq!(meta.total_ratings, 1);
+            assert_eq!(meta.average_score, 4);
+
+            let seller_meta = market.get_seller_metadata(seller);
+            assert_eq!(seller_meta.total_products, 1);
+            assert_eq!(seller_meta.average_product_score, 4);
+            assert_eq!(seller_meta.total_ratings, 0);
+            assert_eq!(seller_meta.average_score, 0);
+
+            let reviewers = market.product_review_index.get(&product).unwrap_or_default();
+            assert_eq!(reviewers, vec![customer]);
+        }
+
+        #[ink::test]
+        fn product_review_overwrite_recalculates() {
+            let mut market = Market::new();
+            let product = [3u8; 32];
+            let seller = [4u8; 32];
+            let customer = Address::from_low_u64_be(5);
+            market.product_sellers_index.insert(&product, &seller);
+
+            ink::env::test::set_caller(customer);
+            market.submit_product_review(
+                product,
+                ProductReview {
+                    rating: 5,
+                    comment: String::from("initial"),
+                },
+            );
+            market.submit_product_review(
+                product,
+                ProductReview {
+                    rating: 2,
+                    comment: String::from("updated"),
+                },
+            );
+
+            let meta = market.get_product_metadata(product);
+            assert_eq!(meta.total_ratings, 1);
+            assert_eq!(meta.average_score, 2);
+
+            let seller_meta = market.get_seller_metadata(seller);
+            assert_eq!(seller_meta.total_products, 1);
+            assert_eq!(seller_meta.average_product_score, 2);
+
+            let reviewers = market.product_review_index.get(&product).unwrap_or_default();
+            assert_eq!(reviewers, vec![customer]);
+        }
+
+        #[ink::test]
+        fn product_reviews_from_multiple_customers_accumulate() {
+            let mut market = Market::new();
+            let product = [6u8; 32];
+            let seller = [7u8; 32];
+            let customer_one = Address::from_low_u64_be(1);
+            let customer_two = Address::from_low_u64_be(2);
+            market.product_sellers_index.insert(&product, &seller);
+
+            ink::env::test::set_caller(customer_one);
+            market.submit_product_review(
+                product,
+                ProductReview {
+                    rating: 4,
+                    comment: String::from("great"),
+                },
+            );
+
+            ink::env::test::set_caller(customer_two);
+            market.submit_product_review(
+                product,
+                ProductReview {
+                    rating: 2,
+                    comment: String::from("ok"),
+                },
+            );
+
+            let meta = market.get_product_metadata(product);
+            assert_eq!(meta.total_ratings, 2);
+            assert_eq!(meta.average_score, 3);
+
+            let seller_meta = market.get_seller_metadata(seller);
+            assert_eq!(seller_meta.total_products, 1);
+            assert_eq!(seller_meta.average_product_score, 3);
+
+            let reviewers = market.product_review_index.get(&product).unwrap_or_default();
+            assert_eq!(reviewers.len(), 2);
+            assert!(reviewers.contains(&customer_one));
+            assert!(reviewers.contains(&customer_two));
+        }
+
+        #[ink::test]
+        fn seller_review_insert_and_update() {
+            let mut market = Market::new();
+            let seller = [8u8; 32];
+            let customer_one = Address::from_low_u64_be(11);
+            let customer_two = Address::from_low_u64_be(12);
+
+            ink::env::test::set_caller(customer_one);
+            market.submit_seller_review(
+                seller,
+                SellerReview {
+                    rating: 5,
+                    comment: String::from("excellent"),
+                },
+            );
+
+            ink::env::test::set_caller(customer_two);
+            market.submit_seller_review(
+                seller,
+                SellerReview {
+                    rating: 1,
+                    comment: String::from("bad"),
+                },
+            );
+
+            let meta = market.get_seller_metadata(seller);
+            assert_eq!(meta.total_ratings, 2);
+            assert_eq!(meta.average_score, 3);
+            assert_eq!(meta.total_products, 0);
+            assert_eq!(meta.average_product_score, 0);
+
+            // Update existing review should keep total_ratings constant.
+            ink::env::test::set_caller(customer_two);
+            market.submit_seller_review(
+                seller,
+                SellerReview {
+                    rating: 3,
+                    comment: String::from("better"),
+                },
+            );
+
+            let updated_meta = market.get_seller_metadata(seller);
+            assert_eq!(updated_meta.total_ratings, 2);
+            assert_eq!(updated_meta.average_score, 4);
         }
     }
 
