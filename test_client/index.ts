@@ -21,6 +21,9 @@ import { getWsProvider } from "polkadot-api/ws-provider";
 
 await cryptoWaitReady();
 
+const ALICE = getSigner("Alice");
+const contractAddr = "0x5fccf241ebd6701ab4596b2f5ef41dc41bdbd1ac";
+
 export function getSigner(seed: string) {
     const keyring = new Keyring({ type: "sr25519" });
     const pair = keyring.addFromUri(`//${seed}`, {}, "sr25519");
@@ -33,9 +36,6 @@ export function getSigner(seed: string) {
         ),
     };
 }
-
-const ALICE = getSigner("Alice");
-const contractAddr = "0x5fccf241ebd6701ab4596b2f5ef41dc41bdbd1ac";
 
 // if interested, check out how to create a smoldot instance in a WebWorker
 // http://papi.how/providers/sm#webworker

@@ -4,3 +4,6 @@ target/
 .papi
 node_modules/
 *lock.yaml
+
+dist/
+.DS_Store

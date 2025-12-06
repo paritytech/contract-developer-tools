@@ -5,7 +5,6 @@
 mod market {
     use ink::{storage::Mapping};
     use ink::prelude::vec::Vec;
-    // <-- import Vec from ink prelude
     use shared::{ProductMetadata, ProductReview, SellerMetadata, SellerReview};
     /// Event emitted when a context is created.
     #[ink(event)]
@@ -136,17 +135,24 @@ mod market {
          * (make sure to handle the case of a new entry vs. overwrite correctly)
          */
         #[ink(message)]
-        pub fn submit_product_review(&mut self, product: ProductId, review: ProductReview) {
+        pub fn submit_product_review(&mut self, product_id: ProductId, review: ProductReview) {
             let customer: CustomerId = self.env().caller();
-            let previous_review = self.product_reviews.get(&(product, customer));
-            let old_product_meta = self.product_metadata.get(&product).unwrap_or_default();
 
-            self.product_reviews.insert(&(product, customer), &review);
+            // TODO! Verify customer is human and has purchased this product (they shouldn't have to provide a receipt)
 
+            // Fetch previously stored values (if any)
+            let previous_review = self.product_reviews.get(&(product_id, customer));
+            let old_product_meta = self.product_metadata.get(&product_id).unwrap_or_default();
+
+            // Store new product review
+            self.product_reviews.insert(&(product_id, customer), &review);
+
+            // Update product metadata
             if previous_review.is_none() {
-                let mut reviewers = self.product_review_index.get(&product).unwrap_or_default();
+                // TODO! is there a way to append w/o fetching the whole vec?
+                let mut reviewers = self.product_review_index.get(&product_id).unwrap_or_default();
                 reviewers.push(customer);
-                self.product_review_index.insert(&product, &reviewers);
+                self.product_review_index.insert(&product_id, &reviewers);
             }
 
             let (average_score, total_ratings) = Self::updated_average(
@@ -159,9 +165,9 @@ mod market {
                 average_score,
                 total_ratings,
             };
-            self.product_metadata.insert(&product, &updated_meta);
+            self.product_metadata.insert(&product_id, &updated_meta);
 
-            if let Some(seller) = self.product_sellers_index.get(&product) {
+            if let Some(seller) = self.product_sellers_index.get(&product_id) {
                 self.update_seller_product_average(
                     seller,
                     old_product_meta.average_score,
@@ -203,6 +209,22 @@ mod market {
         }
 
         #[ink(message)]
+        pub fn delete_product_review(&mut self, product_id: ProductId) {
+            let customer: CustomerId = self.env().caller();
+            self.product_reviews.remove(&(product_id, customer));
+            // Note: metadata not updated on deletion for simplicity
+            unimplemented!();
+        }
+
+        #[ink(message)]
+        pub fn delete_seller_review(&mut self, seller: SellerId) {
+            let customer: CustomerId = self.env().caller();
+            self.seller_reviews.remove(&(seller, customer));
+            // Note: metadata not updated on deletion for simplicity
+            unimplemented!();
+        }
+
+        #[ink(message)]
         pub fn get_product_metadata(&self, product: ProductId) -> ProductMetadata {
             self.product_metadata.get(&product).unwrap_or_default()
         }
@@ -228,9 +250,6 @@ mod market {
         /// Imports all the definitions from the outer scope so we can use them here.
         use super::*;
 
-        /**
-         * Sample dummy test
-         */
         #[ink::test]
         fn product_review_updates_metadata_and_index() {
             let mut market = Market::new();

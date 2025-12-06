@@ -26,3 +26,9 @@ pnpm papi add -w wss://testnet-passet-hub.polkadot.io passet
 
 bun index.ts
 ```
+
+## Missting functionality
+
+-   We need to plug white-listing mechanics into this; ex:
+    -   is this a person
+    -   did they actually buy this product (or a product from this seller)
