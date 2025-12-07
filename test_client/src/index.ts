@@ -1,13 +1,3 @@
-// `dot` is the name we gave to `npx papi add`
-import { passet } from "@polkadot-api/descriptors";
-import { sr25519CreateDerive } from "@polkadot-labs/hdkd";
-import {
-    DEV_PHRASE,
-    entropyToMiniSecret,
-    mnemonicToEntropy,
-} from "@polkadot-labs/hdkd-helpers";
-import { Keyring } from "@polkadot/api";
-import { getPolkadotSigner } from "polkadot-api/signer";
 import { cryptoWaitReady } from "@polkadot/util-crypto";
 import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { createClient } from "polkadot-api";
@@ -19,23 +9,12 @@ import { FixedSizeBinary } from "polkadot-api";
 import { withPolkadotSdkCompat } from "polkadot-api/polkadot-sdk-compat";
 import { getWsProvider } from "polkadot-api/ws-provider";
 
+import { getSigner } from "./signer";
+
 await cryptoWaitReady();
 
 const ALICE = getSigner("Alice");
 const contractAddr = "0x5fccf241ebd6701ab4596b2f5ef41dc41bdbd1ac";
-
-export function getSigner(seed: string) {
-    const keyring = new Keyring({ type: "sr25519" });
-    const pair = keyring.addFromUri(`//${seed}`, {}, "sr25519");
-    return {
-        address: pair.address,
-        signer: getPolkadotSigner(
-            pair.publicKey,
-            "Sr25519",
-            (data: Uint8Array) => pair.sign(data)
-        ),
-    };
-}
 
 // if interested, check out how to create a smoldot instance in a WebWorker
 // http://papi.how/providers/sm#webworker
