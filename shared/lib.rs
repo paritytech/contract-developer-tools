@@ -9,7 +9,7 @@ pub type EntityId = [u8; 32];
 pub type ContextId = [u8; 32];
 
 
-/**
+/*
  * 
  */
 #[ink::storage_item(packed)]
@@ -19,7 +19,7 @@ pub struct ProductReview {
     pub comment: String,
 }
 
-/**
+/*
  * 
  */
 #[ink::storage_item(packed)]
@@ -29,7 +29,7 @@ pub struct SellerReview {
     pub comment: String,
 }
 
-/**
+/*
  * 
  */
 #[derive(Default, Clone)]
@@ -40,7 +40,7 @@ pub struct ProductMetadata {
     pub total_ratings: u32,
 }
 
-/**
+/*
  * Aggregated data for a seller
  */
 #[derive(Default, Clone)]
@@ -57,7 +57,7 @@ pub struct SellerMetadata {
 #[ink::storage_item]
 #[derive(Default)]
 pub struct ReputationContext {
-    /**
+    /*
      * I think `scores` and `last_updated` should be stored flattly in 
      * `ReputationContext`. and then here we only store a registry of `EntityId`s
      * 
@@ -70,7 +70,7 @@ pub struct ReputationContext {
     pub calculator_ptr: Address,
     pub calculator_constants: Vec<u8>,
 
-    /**
+    /*
      * These should be configured in some calculator
      * no need for hardcoded reference to decay here
      */
@@ -84,7 +84,7 @@ pub struct ReputationContext {
 #[ink::trait_definition]
 pub trait ReputationCalculator {
 
-    /**
+    /*
      * what is this function intended to do?
      */
     #[ink(message)]
@@ -95,7 +95,7 @@ pub trait ReputationCalculator {
         proof: Vec<u8>,
     ) -> bool;
 
-    /**
+    /*
      * Calculate a reputation score given some domain-specific payload
      */
     #[ink(message)]
@@ -104,7 +104,7 @@ pub trait ReputationCalculator {
         payload: Vec<u8>,
     ) -> u64;
 
-    /**
+    /*
      * Calculate an aggregate score given child scores and weights
      * 
      * side-note: how does panicking work in contracts? for example
@@ -132,7 +132,7 @@ pub trait ReputationCalculator {
 
 
 
-/**
+/*
  * 
  * vvv  SAMPLE CONTRACT CODE  vvv
  * 

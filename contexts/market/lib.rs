@@ -24,24 +24,24 @@ mod market {
     #[ink(storage)]
     pub struct Market {
         
-        /**
+        /*
          * An individual review for a product by a customer.
          * Each customer can only submit one review per product.
          */
         pub product_reviews: Mapping<(ProductId, CustomerId), ProductReview>,
         
-        /**
+        /*
          * Aggregated metrics for a product
          */
         pub product_metadata: Mapping<ProductId, ProductMetadata>,
 
-        /**
+        /*
          * An individual review for a seller by a customer.
          * Each customer can only submit one review per seller.
          */
         pub seller_reviews: Mapping<(SellerId, CustomerId), SellerReview>,
 
-        /**
+        /*
          * Aggregated metrics for a seller 
          * (dependant on both seller & product reviews)
          */
@@ -111,7 +111,7 @@ mod market {
             self.seller_metadata.insert(&seller, &seller_meta);
         }
 
-        /**
+        /*
          * 
          */
         #[ink(constructor)]
@@ -126,7 +126,7 @@ mod market {
             }
         }
 
-        /**
+        /*
          * 1 - Do whitelisting (skip for now)
          * 2 - Store review (or update review if re-submission)
          * 3 - Update product metadata
@@ -177,7 +177,7 @@ mod market {
             }
         }
 
-        /**
+        /*
          * 1 - Do whitelisting (skip for now)
          * 2 - Store review (or update review if re-submission)
          * 4 - Update seller metadata'
@@ -238,7 +238,7 @@ mod market {
 
 
 
-    /**
+    /*
      * 
      * vvv  SAMPLE CONTRACT CODE  vvv
      * 
@@ -280,6 +280,9 @@ mod market {
             let reviewers = market.product_review_index.get(&product).unwrap_or_default();
             assert_eq!(reviewers, vec![customer]);
         }
+
+
+
 
         #[ink::test]
         fn product_review_overwrite_recalculates() {
