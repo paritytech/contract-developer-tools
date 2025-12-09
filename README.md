@@ -12,7 +12,7 @@ Setup the repository by running the commmand `bash scripts/setup.sh`
 
 **Test**: `bash scripts/test.sh `
 
-<!-- ### Deploy & Test Manually -->
+**Deploy**: `bash scripts/deploy.sh`
 
 ## Test Client
 
