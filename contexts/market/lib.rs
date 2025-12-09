@@ -163,6 +163,9 @@ mod market {
             self.seller_metadata.insert(&seller, &existing_meta);
         }
 
+        /**
+            Delete a product review by the caller for the given product.
+         */
         #[ink(message)]
         pub fn delete_product_review(&mut self, product_id: ProductId) {
             let customer: CustomerId = self.env().caller();
@@ -216,6 +219,9 @@ mod market {
             }
         }
 
+        /**
+            Delete a seller review by the caller for the given seller.
+         */
         #[ink(message)]
         pub fn delete_seller_review(&mut self, seller: SellerId) {
             let customer: CustomerId = self.env().caller();
@@ -630,23 +636,22 @@ mod market {
     /// When running these you need to make sure that you:
     /// - Compile the tests with the `e2e-tests` feature flag enabled (`--features e2e-tests`)
     /// - Are running a Substrate node which contains `pallet-contracts` in the background
+    /// Basic E2E: deploys the contract and has Bob submit a product review.
     #[cfg(all(test, feature = "e2e-tests"))]
     mod e2e_tests {
-        /// Imports all the definitions from the outer scope so we can use them here.
         use super::*;
-
-        /// A helper function used for calling contract messages.
+        use ink::prelude::string::String;
         use ink_e2e::ContractsBackend;
 
         /// The End-to-End test `Result` type.
         type E2EResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-        /// We test that we can read and write a value from the on-chain contract.
         #[ink_e2e::test]
-        async fn it_works(mut client: ink_e2e::Client<C, E>) -> E2EResult<()> {
-            // Given
-            assert_eq!(true, false);
-            let mut constructor = MarketRef::new(false);
+        async fn bob_can_submit_product_review(
+            mut client: ink_e2e::Client<C, E>,
+        ) -> E2EResult<()> {
+            // given: deployed Market contract
+            let mut constructor = MarketRef::new();
             let contract = client
                 .instantiate("market", &ink_e2e::bob(), &mut constructor)
                 .submit()
@@ -654,22 +659,32 @@ mod market {
                 .expect("instantiate failed");
             let mut call_builder = contract.call_builder::<Market>();
 
-            let get = call_builder.get();
-            let get_result = client.call(&ink_e2e::bob(), &get).dry_run().await?;
-            assert!(matches!(get_result.return_value(), false));
+            let product_id: ProductId = [42u8; 32];
+            let review = ProductReview {
+                rating: 4,
+                comment: String::from("nice product from e2e"),
+            };
 
-            // When
-            let flip = call_builder.flip();
-            let _flip_result = client
-                .call(&ink_e2e::bob(), &flip)
+            // when: Bob submits a review
+            let submit = call_builder.submit_product_review(product_id, review);
+            client
+                .call(&ink_e2e::bob(), &submit)
                 .submit()
                 .await
-                .expect("flip failed");
+                .expect("submit_product_review failed");
 
-            // Then
-            let get = call_builder.get();
-            let get_result = client.call(&ink_e2e::bob(), &get).dry_run().await?;
-            assert!(matches!(get_result.return_value(), true));
+            // then: metadata reflects Bob's review
+            let get_meta = call_builder.get_product_metadata(product_id);
+            let meta_res = client
+                .call(&ink_e2e::alice(), &get_meta)
+                .dry_run()
+                .await
+                .expect("get_product_metadata failed");
+
+            let meta = meta_res.return_value();
+            assert_eq!(meta.average.n_entries(), 1);
+            assert_eq!(meta.average.sum(), 4);
+            assert_eq!(meta.average.val(), 4);
 
             Ok(())
         }

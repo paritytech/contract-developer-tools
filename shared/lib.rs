@@ -72,7 +72,7 @@ impl RunningAverage {
  * 
  */
 #[ink::storage_item(packed)]
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ProductReview {
     pub rating: u8,
     pub comment: String,
@@ -82,7 +82,7 @@ pub struct ProductReview {
  * 
  */
 #[ink::storage_item(packed)]
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct SellerReview {
     pub rating: u8,
     pub comment: String,

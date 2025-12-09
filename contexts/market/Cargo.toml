@@ -10,7 +10,7 @@ scale = { workspace = true }
 scale-info = { workspace = true }
 shared = { path = "../../shared", default-features = false }
 
-# [dev-dependencies]
+[dev-dependencies]
 ink_e2e = { workspace = true }
 
 [lib]

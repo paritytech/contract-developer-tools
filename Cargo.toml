@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     # "rep_system",
-    # "shared",
+    "shared",
     "contexts/market"
 ]
 
