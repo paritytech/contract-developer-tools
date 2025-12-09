@@ -34,6 +34,8 @@ bun src/view.ts
 
 3. Edit the files to try out different parts of functionality. type hints should be available to explore available functions/storage.
 
+## <br><br><br><br>
+
 ### TODO
 
 -   Connect to existing "market core" contract and start querying for relevant information
