@@ -27,7 +27,7 @@ pnpm papi add -w wss://testnet-passet-hub.polkadot.io passet
 bun index.ts
 ```
 
-## Missting functionality
+## Missing functionality
 
 -   We need to plug white-listing mechanics into this; ex:
     -   is this a person
