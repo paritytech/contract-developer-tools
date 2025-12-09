@@ -1,4 +1,6 @@
-# contract-developer-tools
+# Contract Developer Tools
+
+This repository is intended to organize a suite of high-level on-chain functionalities given as a collection of [ink!](https://use.ink/docs/v6) contracts & rust libraries.
 
 #### Prerequisites
 
@@ -30,7 +32,7 @@ bun src/index.ts
 bun src/view.ts
 ```
 
-3. edit the files to try out different parts of functionality. type hints should be available to explore available functions/storage.
+3. Edit the files to try out different parts of functionality. type hints should be available to explore available functions/storage.
 
 ### TODO
 
