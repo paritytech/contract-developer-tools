@@ -1,34 +1,43 @@
 # contract-developer-tools
 
-### Setup
+#### Prerequisites
 
-Install pop cli: `brew install r0gue-io/pop-cli/pop`
+-   [pop cli](https://onpop.io/cli/): `brew install r0gue-io/pop-cli/pop`
+-   [bun](https://bun.sh/): `curl -fsSL https://bun.sh/install | bash`
+-   [pnpm](https://pnpm.io/)
 
-Intellisense on code should begin to work after building and the rust-analyzer finishes setting up.
+Setup the repository by running the commmand `bash scripts/setup.sh`
 
-**Build**: `pop build` or `pop build --release`
+**Build**: `bash scripts/build.sh`
 
-**Testing**: `pop test`
+**Test**: `bash scripts/test.sh `
 
-### Deploy & Test Manually
+<!-- ### Deploy & Test Manually -->
 
-#### Setting up test client
+## Test Client
 
-Deploy to Paseo with `bash ./scripts/set-deploy.sh`
+Interact with the [contract](contexts/market/lib.rs) deployed on Paseo
 
-In `test_client` directory:
+1. Build the contract to generate the `target` build artifact
 
-update `contractAddr` in `index.ts`
+2. Inside of the `test_client` directory,
 
+```sh
+# Interact with the paseo contract
+bun src/index.ts
+
+# View storage of the paseo contract
+bun src/view.ts
 ```
-pnpm papi ink add ../target/ink/rep_system/rep_system.contract
-pnpm papi add -w wss://testnet-passet-hub.polkadot.io passet
 
-bun index.ts
-```
+3. edit the files to try out different parts of functionality. type hints should be available to explore available functions/storage.
 
-## Missing functionality
+### TODO
 
--   We need to plug white-listing mechanics into this; ex:
+-   Connect to existing "market core" contract and start querying for relevant information
+    -   real `product_id`'s and `seller_id`'s.
+    -   query if/when a customer purchased a product associated with a given `product_id` & `seller_id`.
+-   Connect to `PoP` (at least a some mock contract interface)
+-   Build out real white-listing mechanics; ex:
     -   is this a person
     -   did they actually buy this product (or a product from this seller)
