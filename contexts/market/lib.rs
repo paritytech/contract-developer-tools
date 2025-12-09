@@ -52,64 +52,6 @@ mod market {
     }
 
     impl Market {
-        /// Recalculate a running average when a rating is inserted or replaced.
-        fn updated_average(
-            current_average: u64,
-            current_total: u32,
-            previous_rating: Option<u8>,
-            new_rating: u8,
-        ) -> (u64, u32) {
-            let total_u64 = current_total as u64;
-            match previous_rating {
-                Some(old) if current_total > 0 => {
-                    let sum = current_average
-                        .saturating_mul(total_u64)
-                        .saturating_sub(old as u64)
-                        .saturating_add(new_rating as u64);
-                    (sum / total_u64, current_total)
-                }
-                Some(_) => (new_rating as u64, 1),
-                None => {
-                    let new_total = total_u64 + 1;
-                    let sum = current_average
-                        .saturating_mul(total_u64)
-                        .saturating_add(new_rating as u64);
-                    (sum / new_total, new_total as u32)
-                }
-            }
-        }
-
-        fn update_seller_product_average(
-            &mut self,
-            seller: SellerId,
-            old_product_average: u64,
-            old_product_total: u32,
-            new_product_average: u64,
-        ) {
-            let mut seller_meta = self.seller_metadata.get(&seller).unwrap_or_default();
-            if old_product_total == 0 {
-                let current_products = seller_meta.total_products as u64;
-                let new_total_products = current_products + 1;
-                let sum = seller_meta
-                    .average_product_score
-                    .saturating_mul(current_products)
-                    .saturating_add(new_product_average);
-                seller_meta.average_product_score = sum / new_total_products;
-                seller_meta.total_products = new_total_products as u32;
-            } else if seller_meta.total_products > 0 {
-                let total_products = seller_meta.total_products as u64;
-                let sum = seller_meta
-                    .average_product_score
-                    .saturating_mul(total_products)
-                    .saturating_sub(old_product_average)
-                    .saturating_add(new_product_average);
-                seller_meta.average_product_score = sum / total_products;
-            } else {
-                seller_meta.average_product_score = new_product_average;
-                seller_meta.total_products = 1;
-            }
-            self.seller_metadata.insert(&seller, &seller_meta);
-        }
 
         /*
          * 
@@ -138,7 +80,9 @@ mod market {
         pub fn submit_product_review(&mut self, product_id: ProductId, review: ProductReview) {
             let customer: CustomerId = self.env().caller();
 
-            // TODO! Verify customer is human and has purchased this product (they shouldn't have to provide a receipt)
+            // TODO! do whitelisting:
+            // - check if customer is human
+            // - check if customer has purchased product
 
             // Fetch previously stored values (if any)
             let previous_review = self.product_reviews.get(&(product_id, customer));
@@ -147,33 +91,46 @@ mod market {
             // Store new product review
             self.product_reviews.insert(&(product_id, customer), &review);
 
-            // Update product metadata
+            // Maintain reviewer index
             if previous_review.is_none() {
-                // TODO! is there a way to append w/o fetching the whole vec?
                 let mut reviewers = self.product_review_index.get(&product_id).unwrap_or_default();
                 reviewers.push(customer);
                 self.product_review_index.insert(&product_id, &reviewers);
             }
 
-            let (average_score, total_ratings) = Self::updated_average(
-                old_product_meta.average_score,
-                old_product_meta.total_ratings,
+            // Update product aggregate
+            let mut product_avg = old_product_meta.average.clone();
+            product_avg.update_u8(
                 previous_review.as_ref().map(|r| r.rating),
-                review.rating,
+                Some(review.rating),
             );
+
             let updated_meta = ProductMetadata {
-                average_score,
-                total_ratings,
+                average: product_avg.clone(),
             };
             self.product_metadata.insert(&product_id, &updated_meta);
 
+            // Update seller product_average if we know the seller
             if let Some(seller) = self.product_sellers_index.get(&product_id) {
-                self.update_seller_product_average(
-                    seller,
-                    old_product_meta.average_score,
-                    old_product_meta.total_ratings,
-                    updated_meta.average_score,
-                );
+                let mut seller_meta = self.seller_metadata.get(&seller).unwrap_or_default();
+
+                let prev_product_val = if old_product_meta.average.n_entries() > 0 {
+                    Some(old_product_meta.average.val())
+                } else {
+                    None
+                };
+
+                let new_product_val = if product_avg.n_entries() > 0 {
+                    Some(product_avg.val())
+                } else {
+                    None
+                };
+
+                seller_meta
+                    .product_average
+                    .update_u64(prev_product_val, new_product_val);
+
+                self.seller_metadata.insert(&seller, &seller_meta);
             }
         }
 
@@ -187,41 +144,95 @@ mod market {
         #[ink(message)]
         pub fn submit_seller_review(&mut self, seller: SellerId, review: SellerReview) {
             let customer: CustomerId = self.env().caller();
+
+            // TODO! do whitelisting:
+            // - check if customer is human
+            // - check if customer has purchased some product from this seller
+
             let previous_review = self.seller_reviews.get(&(seller, customer));
-            let existing_meta = self.seller_metadata.get(&seller).unwrap_or_default();
 
             self.seller_reviews.insert(&(seller, customer), &review);
 
-            let (average_score, total_ratings) = Self::updated_average(
-                existing_meta.average_score,
-                existing_meta.total_ratings,
+            let mut existing_meta = self.seller_metadata.get(&seller).unwrap_or_default();
+
+            existing_meta.average.update_u8(
                 previous_review.as_ref().map(|r| r.rating),
-                review.rating,
+                Some(review.rating),
             );
 
-            let updated_meta = SellerMetadata {
-                average_score,
-                total_ratings,
-                average_product_score: existing_meta.average_product_score,
-                total_products: existing_meta.total_products,
-            };
-            self.seller_metadata.insert(&seller, &updated_meta);
+            self.seller_metadata.insert(&seller, &existing_meta);
         }
 
         #[ink(message)]
         pub fn delete_product_review(&mut self, product_id: ProductId) {
             let customer: CustomerId = self.env().caller();
+
+            let previous_review = self.product_reviews.get(&(product_id, customer));
+            if previous_review.is_none() {
+                return;
+            }
+
+            // Remove stored review
             self.product_reviews.remove(&(product_id, customer));
-            // Note: metadata not updated on deletion for simplicity
-            unimplemented!();
+
+            // Previous product metadata
+            let old_product_meta = self.product_metadata.get(&product_id).unwrap_or_default();
+
+            // Update product aggregate
+            let mut product_avg = old_product_meta.average.clone();
+            product_avg.update_u8(previous_review.as_ref().map(|r| r.rating), None);
+
+            let updated_meta = ProductMetadata {
+                average: product_avg.clone(),
+            };
+            self.product_metadata.insert(&product_id, &updated_meta);
+
+            // Maintain reviewer index
+            let mut reviewers = self.product_review_index.get(&product_id).unwrap_or_default();
+            reviewers.retain(|c| c != &customer);
+            self.product_review_index.insert(&product_id, &reviewers);
+
+            // Update seller product_average if we know the seller
+            if let Some(seller) = self.product_sellers_index.get(&product_id) {
+                let mut seller_meta = self.seller_metadata.get(&seller).unwrap_or_default();
+
+                let prev_product_val = if old_product_meta.average.n_entries() > 0 {
+                    Some(old_product_meta.average.val())
+                } else {
+                    None
+                };
+
+                let new_product_val = if product_avg.n_entries() > 0 {
+                    Some(product_avg.val())
+                } else {
+                    None
+                };
+
+                seller_meta
+                    .product_average
+                    .update_u64(prev_product_val, new_product_val);
+
+                self.seller_metadata.insert(&seller, &seller_meta);
+            }
         }
 
         #[ink(message)]
         pub fn delete_seller_review(&mut self, seller: SellerId) {
             let customer: CustomerId = self.env().caller();
+
+            let previous_review = self.seller_reviews.get(&(seller, customer));
+            if previous_review.is_none() {
+                return;
+            }
+
             self.seller_reviews.remove(&(seller, customer));
-            // Note: metadata not updated on deletion for simplicity
-            unimplemented!();
+
+            let mut existing_meta = self.seller_metadata.get(&seller).unwrap_or_default();
+            existing_meta
+                .average
+                .update_u8(previous_review.as_ref().map(|r| r.rating), None);
+
+            self.seller_metadata.insert(&seller, &existing_meta);
         }
 
         #[ink(message)]
@@ -238,17 +249,69 @@ mod market {
 
 
 
-    /*
-     * 
-     * vvv  SAMPLE CONTRACT CODE  vvv
-     * 
-     */
 
 
     #[cfg(test)]
     mod tests {
         /// Imports all the definitions from the outer scope so we can use them here.
         use super::*;
+        use shared::RunningAverage;
+
+        #[ink::test]
+        fn running_average_add_update_remove_exact() {
+            let mut avg = RunningAverage::default();
+
+            // Add 1
+            avg.update_u8(None, Some(1));
+            assert_eq!(avg.sum(), 1);
+            assert_eq!(avg.n_entries(), 1);
+            assert_eq!(avg.val(), 1);
+
+            // Add 2
+            avg.update_u8(None, Some(2));
+            assert_eq!(avg.sum(), 3);
+            assert_eq!(avg.n_entries(), 2);
+            assert_eq!(avg.val(), 1); // floor(3/2)
+
+            // Update 2 -> 4
+            avg.update_u8(Some(2), Some(4));
+            assert_eq!(avg.sum(), 5);
+            assert_eq!(avg.n_entries(), 2);
+            assert_eq!(avg.val(), 2); // floor(5/2)
+
+            // Remove 1
+            avg.update_u8(Some(1), None);
+            assert_eq!(avg.sum(), 4);
+            assert_eq!(avg.n_entries(), 1);
+            assert_eq!(avg.val(), 4);
+        }
+
+        #[ink::test]
+        fn running_average_is_reversible_to_single_value() {
+            let mut avg = RunningAverage::default();
+
+            // Add a few values
+            avg.update_u8(None, Some(1));
+            avg.update_u8(None, Some(2));
+            avg.update_u8(None, Some(3));
+
+            // Remove them in arbitrary order
+            avg.update_u8(Some(2), None);
+            avg.update_u8(Some(1), None);
+            avg.update_u8(Some(3), None);
+
+            // Everything removed
+            assert_eq!(avg.sum(), 0);
+            assert_eq!(avg.n_entries(), 0);
+            assert_eq!(avg.val(), 0);
+
+            // Now add just a 5
+            avg.update_u8(None, Some(5));
+
+            assert_eq!(avg.sum(), 5);
+            assert_eq!(avg.n_entries(), 1);
+            assert_eq!(avg.val(), 5);
+        }
 
         #[ink::test]
         fn product_review_updates_metadata_and_index() {
@@ -268,21 +331,22 @@ mod market {
             );
 
             let meta = market.get_product_metadata(product);
-            assert_eq!(meta.total_ratings, 1);
-            assert_eq!(meta.average_score, 4);
+            assert_eq!(meta.average.n_entries(), 1);
+            assert_eq!(meta.average.sum(), 4);
+            assert_eq!(meta.average.val(), 4);
 
             let seller_meta = market.get_seller_metadata(seller);
-            assert_eq!(seller_meta.total_products, 1);
-            assert_eq!(seller_meta.average_product_score, 4);
-            assert_eq!(seller_meta.total_ratings, 0);
-            assert_eq!(seller_meta.average_score, 0);
+            assert_eq!(seller_meta.product_average.n_entries(), 1);
+            assert_eq!(seller_meta.product_average.sum(), 4);
+            assert_eq!(seller_meta.product_average.val(), 4);
+
+            assert_eq!(seller_meta.average.n_entries(), 0);
+            assert_eq!(seller_meta.average.sum(), 0);
+            assert_eq!(seller_meta.average.val(), 0);
 
             let reviewers = market.product_review_index.get(&product).unwrap_or_default();
             assert_eq!(reviewers, vec![customer]);
         }
-
-
-
 
         #[ink::test]
         fn product_review_overwrite_recalculates() {
@@ -309,12 +373,14 @@ mod market {
             );
 
             let meta = market.get_product_metadata(product);
-            assert_eq!(meta.total_ratings, 1);
-            assert_eq!(meta.average_score, 2);
+            assert_eq!(meta.average.n_entries(), 1);
+            assert_eq!(meta.average.sum(), 2);
+            assert_eq!(meta.average.val(), 2);
 
             let seller_meta = market.get_seller_metadata(seller);
-            assert_eq!(seller_meta.total_products, 1);
-            assert_eq!(seller_meta.average_product_score, 2);
+            assert_eq!(seller_meta.product_average.n_entries(), 1);
+            assert_eq!(seller_meta.product_average.sum(), 2);
+            assert_eq!(seller_meta.product_average.val(), 2);
 
             let reviewers = market.product_review_index.get(&product).unwrap_or_default();
             assert_eq!(reviewers, vec![customer]);
@@ -348,12 +414,14 @@ mod market {
             );
 
             let meta = market.get_product_metadata(product);
-            assert_eq!(meta.total_ratings, 2);
-            assert_eq!(meta.average_score, 3);
+            assert_eq!(meta.average.n_entries(), 2);
+            assert_eq!(meta.average.sum(), 6);
+            assert_eq!(meta.average.val(), 3);
 
             let seller_meta = market.get_seller_metadata(seller);
-            assert_eq!(seller_meta.total_products, 1);
-            assert_eq!(seller_meta.average_product_score, 3);
+            assert_eq!(seller_meta.product_average.n_entries(), 1);
+            assert_eq!(seller_meta.product_average.sum(), 3);
+            assert_eq!(seller_meta.product_average.val(), 3);
 
             let reviewers = market.product_review_index.get(&product).unwrap_or_default();
             assert_eq!(reviewers.len(), 2);
@@ -387,12 +455,14 @@ mod market {
             );
 
             let meta = market.get_seller_metadata(seller);
-            assert_eq!(meta.total_ratings, 2);
-            assert_eq!(meta.average_score, 3);
-            assert_eq!(meta.total_products, 0);
-            assert_eq!(meta.average_product_score, 0);
+            assert_eq!(meta.average.n_entries(), 2);
+            assert_eq!(meta.average.sum(), 6);
+            assert_eq!(meta.average.val(), 3);
+            assert_eq!(meta.product_average.n_entries(), 0);
+            assert_eq!(meta.product_average.sum(), 0);
+            assert_eq!(meta.product_average.val(), 0);
 
-            // Update existing review should keep total_ratings constant.
+            // Update existing review should keep n_entries constant.
             ink::env::test::set_caller(customer_two);
             market.submit_seller_review(
                 seller,
@@ -403,11 +473,157 @@ mod market {
             );
 
             let updated_meta = market.get_seller_metadata(seller);
-            assert_eq!(updated_meta.total_ratings, 2);
-            assert_eq!(updated_meta.average_score, 4);
+            assert_eq!(updated_meta.average.n_entries(), 2);
+            assert_eq!(updated_meta.average.sum(), 8);
+            assert_eq!(updated_meta.average.val(), 4);
+        }
+
+        #[ink::test]
+        fn delete_product_review_updates_metadata_and_index() {
+            let mut market = Market::new();
+            let product = [9u8; 32];
+            let seller = [10u8; 32];
+            let customer_one = Address::from_low_u64_be(21);
+            let customer_two = Address::from_low_u64_be(22);
+
+            market.product_sellers_index.insert(&product, &seller);
+
+            ink::env::test::set_caller(customer_one);
+            market.submit_product_review(
+                product,
+                ProductReview {
+                    rating: 4,
+                    comment: String::from("good"),
+                },
+            );
+
+            ink::env::test::set_caller(customer_two);
+            market.submit_product_review(
+                product,
+                ProductReview {
+                    rating: 2,
+                    comment: String::from("ok"),
+                },
+            );
+
+            // Pre-delete
+            let meta = market.get_product_metadata(product);
+            assert_eq!(meta.average.n_entries(), 2);
+            assert_eq!(meta.average.sum(), 6);
+            assert_eq!(meta.average.val(), 3);
+
+            let seller_meta = market.get_seller_metadata(seller);
+            assert_eq!(seller_meta.product_average.n_entries(), 1);
+            assert_eq!(seller_meta.product_average.sum(), 3);
+            assert_eq!(seller_meta.product_average.val(), 3);
+
+            // Delete one review
+            ink::env::test::set_caller(customer_two);
+            market.delete_product_review(product);
+
+            let meta = market.get_product_metadata(product);
+            assert_eq!(meta.average.n_entries(), 1);
+            assert_eq!(meta.average.sum(), 4);
+            assert_eq!(meta.average.val(), 4);
+
+            let seller_meta = market.get_seller_metadata(seller);
+            assert_eq!(seller_meta.product_average.n_entries(), 1);
+            assert_eq!(seller_meta.product_average.sum(), 4);
+            assert_eq!(seller_meta.product_average.val(), 4);
+
+            let reviewers = market.product_review_index.get(&product).unwrap_or_default();
+            assert_eq!(reviewers.len(), 1);
+            assert_eq!(reviewers[0], customer_one);
+
+            // Delete last review
+            ink::env::test::set_caller(customer_one);
+            market.delete_product_review(product);
+
+            let meta = market.get_product_metadata(product);
+            assert_eq!(meta.average.n_entries(), 0);
+            assert_eq!(meta.average.sum(), 0);
+            assert_eq!(meta.average.val(), 0);
+
+            let seller_meta = market.get_seller_metadata(seller);
+            assert_eq!(seller_meta.product_average.n_entries(), 0);
+            assert_eq!(seller_meta.product_average.sum(), 0);
+            assert_eq!(seller_meta.product_average.val(), 0);
+
+            let reviewers = market.product_review_index.get(&product).unwrap_or_default();
+            assert_eq!(reviewers.len(), 0);
+        }
+
+        #[ink::test]
+        fn delete_product_review_noop_when_missing() {
+            let mut market = Market::new();
+            let product = [11u8; 32];
+            let customer = Address::from_low_u64_be(30);
+
+            ink::env::test::set_caller(customer);
+            // Should not panic
+            market.delete_product_review(product);
+        }
+
+        #[ink::test]
+        fn delete_seller_review_updates_metadata() {
+            let mut market = Market::new();
+            let seller = [12u8; 32];
+            let customer_one = Address::from_low_u64_be(31);
+            let customer_two = Address::from_low_u64_be(32);
+
+            ink::env::test::set_caller(customer_one);
+            market.submit_seller_review(
+                seller,
+                SellerReview {
+                    rating: 5,
+                    comment: String::from("excellent"),
+                },
+            );
+
+            ink::env::test::set_caller(customer_two);
+            market.submit_seller_review(
+                seller,
+                SellerReview {
+                    rating: 1,
+                    comment: String::from("bad"),
+                },
+            );
+
+            let meta = market.get_seller_metadata(seller);
+            assert_eq!(meta.average.n_entries(), 2);
+            assert_eq!(meta.average.sum(), 6);
+            assert_eq!(meta.average.val(), 3);
+
+            // Delete one
+            ink::env::test::set_caller(customer_two);
+            market.delete_seller_review(seller);
+
+            let meta = market.get_seller_metadata(seller);
+            assert_eq!(meta.average.n_entries(), 1);
+            assert_eq!(meta.average.sum(), 5);
+            assert_eq!(meta.average.val(), 5);
+
+            // Delete remaining
+            ink::env::test::set_caller(customer_one);
+            market.delete_seller_review(seller);
+
+            let meta = market.get_seller_metadata(seller);
+            assert_eq!(meta.average.n_entries(), 0);
+            assert_eq!(meta.average.sum(), 0);
+            assert_eq!(meta.average.val(), 0);
+        }
+
+        #[ink::test]
+        fn delete_seller_review_noop_when_missing() {
+            let mut market = Market::new();
+            let seller = [13u8; 32];
+            let customer = Address::from_low_u64_be(40);
+
+            ink::env::test::set_caller(customer);
+            // No entry, should be no-op
+            market.delete_seller_review(seller);
         }
     }
-
 
     /// This is how you'd write end-to-end (E2E) or integration tests for ink! contracts.
     ///
@@ -429,6 +645,7 @@ mod market {
         #[ink_e2e::test]
         async fn it_works(mut client: ink_e2e::Client<C, E>) -> E2EResult<()> {
             // Given
+            assert_eq!(true, false);
             let mut constructor = MarketRef::new(false);
             let contract = client
                 .instantiate("market", &ink_e2e::bob(), &mut constructor)

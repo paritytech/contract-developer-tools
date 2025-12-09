@@ -10,4 +10,4 @@ members = [
 ink = { version = "6.0.0-beta.1", default-features = false, features = ["unstable-hostfn"] }
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2.6", default-features = false, features = ["derive"] }
-# ink_e2e = { version = "6.0.0-beta.1", default-features = false }
+ink_e2e = { version = "6.0.0-beta.1" }

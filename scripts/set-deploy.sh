@@ -4,8 +4,7 @@
 # 2. All project setup stuff to deploy 
 #    contract via CI? Just automated deployment tbh.
 
-pop up ./rep_system \
+pop up ./contexts/market \
     --suri "//Alice" \
     --url wss://testnet-passet-hub.polkadot.io \
-    --args "true" \
     -x -y

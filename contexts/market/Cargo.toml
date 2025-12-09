@@ -11,7 +11,7 @@ scale-info = { workspace = true }
 shared = { path = "../../shared", default-features = false }
 
 # [dev-dependencies]
-# ink_e2e = { workspace = true }
+ink_e2e = { workspace = true }
 
 [lib]
 path = "lib.rs"

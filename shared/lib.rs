@@ -8,6 +8,65 @@ use ink::storage::Mapping;
 pub type EntityId = [u8; 32];
 pub type ContextId = [u8; 32];
 
+#[derive(Default, Clone)]
+#[cfg_attr(feature = "std", derive(Debug, PartialEq, Eq, ink::storage::traits::StorageLayout))]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
+pub struct RunningAverage {
+    sum: u64,
+    total: u32,
+}
+
+impl RunningAverage {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Update the running average with an optional previous value and an optional new value.
+    ///
+    /// This covers insert (None -> Some), update (Some -> Some) and delete (Some -> None).
+    pub fn update_u64(&mut self, prev: Option<u64>, new: Option<u64>) {
+        let mut sum = self.sum;
+        let mut total = self.total;
+
+        if let Some(p) = prev {
+            if total > 0 {
+                sum = sum.saturating_sub(p);
+                total -= 1;
+            }
+        }
+
+        if let Some(n) = new {
+            sum = sum.saturating_add(n);
+            total = total.saturating_add(1);
+        }
+
+        self.sum = sum;
+        self.total = total;
+    }
+
+    /// Convenience for `u8` inputs (ratings).
+    pub fn update_u8(&mut self, prev: Option<u8>, new: Option<u8>) {
+        self.update_u64(prev.map(|v| v as u64), new.map(|v| v as u64));
+    }
+
+    pub fn n_entries(&self) -> u32 {
+        self.total
+    }
+
+    pub fn sum(&self) -> u64 {
+        self.sum
+    }
+
+    /// Integer average. Returns 0 if `total == 0`.
+    pub fn val(&self) -> u64 {
+        if self.total == 0 {
+            0
+        } else {
+            self.sum / (self.total as u64)
+        }
+    }
+}
+
 
 /*
  * 
@@ -36,9 +95,8 @@ pub struct SellerReview {
 #[cfg_attr(feature = "std", derive(Debug, PartialEq, Eq, ink::storage::traits::StorageLayout))]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub struct ProductMetadata {
-    pub average_score: u64,
-    pub total_ratings: u32,
-}
+    /// Ratings for this product.
+    pub average: RunningAverage,}
 
 /*
  * Aggregated data for a seller
@@ -47,11 +105,10 @@ pub struct ProductMetadata {
 #[cfg_attr(feature = "std", derive(Debug, PartialEq, Eq, ink::storage::traits::StorageLayout))]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub struct SellerMetadata {
-    pub average_score: u64,
-    pub total_ratings: u32,
-
-    pub average_product_score: u64,
-    pub total_products: u32,
+    /// Direct seller reviews.
+    pub average: RunningAverage,
+    /// Per-product averages (only counting products with at least one rating).
+    pub product_average: RunningAverage,
 }
 
 #[ink::storage_item]
