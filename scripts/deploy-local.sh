@@ -10,8 +10,11 @@ OUTPUT=$(pop up ../rep_system \
 CONTRACT=$(echo $OUTPUT | grep address | awk -F' ' '{print $6}') #TODO not working
 echo Contract Adress $CONTRACT
 echo Deploying Mark3t Rep
+
+    --args $CONTRACT \
+
+
 pop up ../mark3t_rep \
     --suri "//Alice" \
     --url $ENDPOINT \
-    --args $CONTRACT \
     -x -y 

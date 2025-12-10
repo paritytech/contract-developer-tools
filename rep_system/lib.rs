@@ -1,5 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-
+/* 
 #[ink::contract]
 mod rep_system {
 
@@ -14,13 +14,6 @@ mod rep_system {
     #[ink(storage)]
     pub struct RepSystem {
 
-        // owner of a context to restrict rating submission
-        pub owners: Mapping<ContextId, Address>,
-        pub calculators: Mapping<ContextId, Address>,
-
-        pub ratings: Mapping<RatingKey, Rating>,
-        pub relations: Mapping<(ContextId, EntityType), Vec<EntityType>>,
-        pub scores: Mapping<ScoreKey, u8>
 
     }
 
@@ -28,77 +21,11 @@ mod rep_system {
 
         #[ink(constructor)]
         pub fn new() -> Self {
-            Self { 
-                owners: Mapping::default(),
-                calculators: Mapping::default(),
-                ratings: Mapping::default(), 
-                relations: Mapping::default(),
-                scores: Mapping::default()
-            }
-        }
-
-
-        pub fn register_context(&mut self, context: ContextId) -> Result<(), Error> {
-            if self.owners.contains(context) {
-                return Err(Error::ContextAlreadyExists)
-            }
-            let owner = self.env().caller();
-            self.owners.insert(context, &owner);
-
-            emit_event(ContextCreated {
-                context: context,
-                owner: owner,
-                time: self.env().block_timestamp()
-            });
-            return Ok(())
-        }
-
-
-        #[ink(message)]
-        pub fn submit_rating(&mut self, context: ContextId, transaction: TransactionId, typ: EntityType, rating: Rating) -> Result<(), Error> {
-            self.check_owner(context)?;
-
-            let key: RatingKey = (context, transaction, typ);
-            if self.ratings.contains(key) {
-                return Err(Error::TransactionAlreadyRated);
-            }
-
-            self.ratings.insert(key, &rating); // TODO try_insert
-            
-            emit_event(RatingSubmitted { 
-                context: context, 
-                user: rating.0,
-                timestamp: rating.2,
-                entity_id: rating.1, 
-                entity_type: typ, 
-                rating: rating.3, 
-                remark: rating.4 });
-
-            Ok(())
-        }
-
-
-        #[ink(message)]
-        pub fn get_score(&self, context: ContextId, entity: EntityId) -> Score {
-            // TODO also checkOwner??
-            let key: ScoreKey = (context, entity);
-
-            match self.scores.get(key) {
-                Some(score) => return score,
-                None => return NO_RATING
-            }
-        }
-
-        fn check_owner(&self, context: ContextId) -> Result<(), Error> {
-            match self.owners.get(context) {
-                Some(owner) => 
-                    if self.env().caller() != owner {
-                        return Err(Error::NotOwner);
-                    } else { return Ok(()) },
-                None => return Err(Error::ContextNotFound)
-            }
 
         }
+
+
+
 
     }
 
@@ -186,3 +113,5 @@ mod rep_system {
 }
 
 pub use self::rep_system::RepSystem;
+
+*/

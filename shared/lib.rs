@@ -5,33 +5,38 @@ use ink::Address;
 use ink::env::Timestamp;
 use ink::prelude::string::String;
 
-pub type EntityId = [u8; 32];
+pub type EntityId = u8; //[u8; 32];
 pub type EntityType = u8;
 pub type ContextId = u64;
-pub type Person = [u8; 32];
+pub type Person = u8; //[u8; 32];
 pub type TransactionId = u64;
 pub type Score = u8; // 0..100
-pub type Rating = (Person, EntityId, Timestamp, Score, Option<String>);
+//pub type Rating = (Person, EntityId, Timestamp, Score, Option<String>);
 
-pub const NO_ENTITY: [u8; 32] = [0; 32];
+pub const NO_ENTITY: u8 = 0;
+//pub const NO_ENTITY: [u8; 32] = [0; 32];
 pub const NO_RATING: u8 = 255;
 //pub mod errors;
 //pub mod events;
 
-/* 
-#[ink(storage)]
+
+//#[ink(storage)]
+#[derive(Debug)]
 #[derive(Default)]
+#[ink::storage_item(packed)]
 pub struct Rating {
 
     pub rater: Person,
+    pub entity_id: EntityId,
     pub timestamp: Timestamp,
     pub rating: u8,
     pub remark: Option<String>
 
 }
-*/
+
 
 #[ink::error]
+#[derive(PartialEq, Debug)]
 pub enum Error {
     ContextAlreadyExists,
     ContextNotFound,
@@ -47,7 +52,7 @@ pub struct RatingSubmitted {
     #[ink(topic)]
     pub user: Person,
     #[ink(topic)] // TODO maybe combined key with entity type
-    pub entity_id: EntityId,
+    pub entity_id: EntityId, //TODO or use rating struct?
     pub timestamp: Timestamp,
     pub entity_type: EntityType,
     pub rating: u8,
@@ -61,6 +66,18 @@ pub struct ContextCreated {
     #[ink(topic)]
     pub owner: Address,
     pub time: Timestamp
+}
+
+#[ink::event]
+pub struct ScoreUpdated {
+    #[ink(topic)]
+    pub context: ContextId,
+    #[ink(topic)] // TODO maybe combined key with entity type
+    pub entity_id: EntityId,
+    pub timestamp: Timestamp,
+    pub entity_type: EntityType,
+    pub score: Score
+
 }
 
 
