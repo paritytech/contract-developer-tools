@@ -1,74 +1,164 @@
+// test_client/src/index.ts
+
 import { cryptoWaitReady } from "@polkadot/util-crypto";
 import { createInkSdk } from "@polkadot-api/sdk-ink";
 import { createClient } from "polkadot-api";
-import { getSmProvider } from "polkadot-api/sm-provider";
-import * as SPECS from "polkadot-api/chains";
-import { start } from "polkadot-api/smoldot";
-import { contracts } from "@polkadot-api/descriptors";
-import { FixedSizeBinary } from "polkadot-api";
 import { withPolkadotSdkCompat } from "polkadot-api/polkadot-sdk-compat";
 import { getWsProvider } from "polkadot-api/ws-provider";
+import { contracts } from "@polkadot-api/descriptors";
+import { FixedSizeBinary } from "polkadot-api";
 
 import { getSigner } from "./signer";
 
-await cryptoWaitReady();
+import { createInterface } from "readline/promises";
+import { stdin as input, stdout as output } from "node:process";
 
-const ALICE = getSigner("Alice");
-const contractAddr = "0x5fccf241ebd6701ab4596b2f5ef41dc41bdbd1ac";
-
-// if interested, check out how to create a smoldot instance in a WebWorker
-// http://papi.how/providers/sm#webworker
-const smoldot = start();
-const relay = await smoldot.addChain({ chainSpec: SPECS.paseo });
-const chain = await smoldot.addChain({
-    chainSpec: SPECS.paseo_asset_hub,
-    potentialRelayChains: [relay],
-});
-
-// Connect to the paseo_asset_hub relay chain.
-// const client = createClient(getSmProvider(chain));
-
-const client = createClient(
-    withPolkadotSdkCompat(getWsProvider("wss://testnet-passet-hub.polkadot.io"))
-);
-
-const inkSdk = createInkSdk(client);
-const flipperContract = inkSdk.getContract(contracts.rep_system, contractAddr);
-
-const result = await flipperContract
-    .send("create_context", {
-        origin: ALICE.address,
-        // data: {
-        //     entity: new FixedSizeBinary(Uint8Array.from(Array(32).fill(1))),
-        // },
-    })
-    .signAndSubmit(ALICE.signer);
-
-const storage = await flipperContract.getStorage().getRoot();
-if (storage.success) {
-    storage.value.contexts;
+const MARKET_CONTRACT_ADDR = "0x0b6670b0185b23df080b340fac8948fa2b0e7c62";
+function getContract(inkSdk: ReturnType<typeof createInkSdk>) {
+    return inkSdk.getContract(contracts.market, MARKET_CONTRACT_ADDR);
 }
 
-console.log("create_context result:", result);
-console.log(result.dispatchError);
-// const result2 = await flipperContract.query("get_rating", {
-//     origin: ALICE.address,
-//     data: {
-//         entity: new FixedSizeBinary(Uint8Array.from(Array(32).fill(1))),
-//     },
-// });
+function randomCode(len = 4): string {
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let out = "";
+    for (let i = 0; i < len; i++) {
+        out += alphabet[Math.floor(Math.random() * alphabet.length)];
+    }
+    return out;
+}
 
-// With the `client`, you can get information such as subscribing to the last
-// block to get the latest hash:
-// client.finalizedBlock$.subscribe((finalizedBlock) =>
-//     console.log(finalizedBlock.number, finalizedBlock.hash)
-// );
+function shortCodeToId(code: string): FixedSizeBinary<32> {
+    const enc = new TextEncoder();
+    const bytes = new Uint8Array(32);
+    const src = enc.encode(code.slice(0, 32));
+    bytes.set(src);
+    return new FixedSizeBinary(bytes);
+}
 
-// // To interact with the chain, you need to get the `TypedApi`, which includes
-// // all the types for every call in that chain:
-// const dotApi = client.getTypedApi(polkadot);
+class MarketReputationAPI {
+    public signer: ReturnType<typeof getSigner>;
+    public market: ReturnType<typeof getContract>;
 
-// // get the value for an account
-// const accountInfo = await dotApi.query.System.Account.getValue(
-//     "16JGzEsi8gcySKjpmxHVrkLTHdFHodRepEz8n244gNZpr9J"
-// );
+    constructor() {
+        this.signer = getSigner("Alice");
+        const client = createClient(
+            withPolkadotSdkCompat(
+                getWsProvider("wss://testnet-passet-hub.polkadot.io")
+            )
+        );
+        const inkSdk = createInkSdk(client);
+        this.market = inkSdk.getContract(
+            contracts.market,
+            MARKET_CONTRACT_ADDR
+        );
+    }
+
+    async submitReview(
+        kind: "product" | "seller",
+        entityId: FixedSizeBinary<32>,
+        rating: number,
+        comment: string
+    ) {
+        const msgName =
+            kind === "seller"
+                ? "submit_seller_review"
+                : "submit_product_review";
+
+        const data =
+            kind === "seller"
+                ? {
+                      seller: entityId,
+                      review: { rating, comment },
+                  }
+                : {
+                      product_id: entityId,
+                      review: { rating, comment },
+                  };
+
+        // submit review
+        return this.market
+            .send(msgName, {
+                origin: this.signer.address,
+                data,
+            })
+            .signAndSubmit(this.signer.signer);
+    }
+}
+
+async function main() {
+    await cryptoWaitReady();
+
+    // interface with contract features
+    const marketRep = new MarketReputationAPI();
+
+    // Handle user command loop
+    const rl = createInterface({ input, output });
+    const ask = (q: string) => rl.question(q);
+    for (;;) {
+        // Fetch input
+        const rawInput = (
+            await ask(
+                "\nReview type: [p]roduct, [s]eller, [q]uit? (default: p) "
+            )
+        )
+            .trim()
+            .toLowerCase();
+        if (rawInput === "q") {
+            break;
+        }
+
+        const isSeller = rawInput === "s";
+        const label = isSeller ? "Seller" : "Product";
+
+        let code = (
+            await ask(`${label} code (4 chars, empty = random): `)
+        ).trim();
+
+        if (!code) {
+            code = randomCode(4);
+            console.log(`${label} code generated: ${code}`);
+        } else if (code.length > 4) {
+            code = code.slice(0, 4);
+            console.log(`${label} code truncated to: ${code}`);
+        }
+
+        const id = shortCodeToId(code);
+
+        const ratingStr = (await ask("Rating (1-5): ")).trim();
+        const rating = Number(ratingStr);
+        if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+            console.error("Invalid rating, must be integer 1..5");
+            continue;
+        }
+
+        const comment = await ask("Comment: ");
+
+        console.log(
+            `\nSubmitting ${label.toLowerCase()} review as Alice (${
+                marketRep.signer.address
+            })...`
+        );
+
+        // Submit review TX
+        try {
+            const result = await marketRep.submitReview(
+                isSeller ? "seller" : "product",
+                id,
+                rating,
+                comment
+            );
+
+            console.log("Tx result:");
+            console.dir(result, { depth: 5 });
+        } catch (err) {
+            console.error("Failed to submit review:");
+            console.error(err);
+        }
+    }
+    await rl.close();
+}
+
+main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+});

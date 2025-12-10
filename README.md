@@ -14,7 +14,7 @@ Setup the repository by running the commmand `bash scripts/setup.sh`
 
 **Test**: `bash scripts/test.sh `
 
-**Deploy**: `bash scripts/deploy.sh`
+**Deploy** _(to Paseo)_: `bash scripts/deploy.sh`
 
 ## Test Client
 
@@ -35,6 +35,8 @@ bun src/view.ts
 3. Edit the files to try out different parts of functionality. type hints should be available to explore available functions/storage.
 
 <br><br><br><br>
+
+---
 
 ### TODO
 
