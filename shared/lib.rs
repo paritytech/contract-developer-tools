@@ -96,7 +96,8 @@ pub struct SellerReview {
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub struct ProductMetadata {
     /// Ratings for this product.
-    pub average: RunningAverage,}
+    pub average: RunningAverage
+}
 
 /*
  * Aggregated data for a seller
