@@ -100,7 +100,7 @@ mod market {
 
             // Update product aggregate
             let mut product_avg = old_product_meta.average.clone();
-            product_avg.update_u8(
+            product_avg.update(
                 previous_review.as_ref().map(|r| r.rating),
                 Some(review.rating),
             );
@@ -128,7 +128,7 @@ mod market {
 
                 seller_meta
                     .product_average
-                    .update_u64(prev_product_val, new_product_val);
+                    .update(prev_product_val, new_product_val);
 
                 self.seller_metadata.insert(&seller, &seller_meta);
             }
@@ -155,7 +155,7 @@ mod market {
 
             let mut existing_meta = self.seller_metadata.get(&seller).unwrap_or_default();
 
-            existing_meta.average.update_u8(
+            existing_meta.average.update(
                 previous_review.as_ref().map(|r| r.rating),
                 Some(review.rating),
             );
@@ -183,7 +183,7 @@ mod market {
 
             // Update product aggregate
             let mut product_avg = old_product_meta.average.clone();
-            product_avg.update_u8(previous_review.as_ref().map(|r| r.rating), None);
+            product_avg.update(previous_review.as_ref().map(|r| r.rating), None);
 
             let updated_meta = ProductMetadata {
                 average: product_avg.clone(),
@@ -213,7 +213,7 @@ mod market {
 
                 seller_meta
                     .product_average
-                    .update_u64(prev_product_val, new_product_val);
+                    .update(prev_product_val, new_product_val);
 
                 self.seller_metadata.insert(&seller, &seller_meta);
             }
@@ -236,7 +236,7 @@ mod market {
             let mut existing_meta = self.seller_metadata.get(&seller).unwrap_or_default();
             existing_meta
                 .average
-                .update_u8(previous_review.as_ref().map(|r| r.rating), None);
+                .update(previous_review.as_ref().map(|r| r.rating), None);
 
             self.seller_metadata.insert(&seller, &existing_meta);
         }
@@ -268,25 +268,25 @@ mod market {
             let mut avg = RunningAverage::default();
 
             // Add 1
-            avg.update_u8(None, Some(1));
+            avg.update(None, Some(1));
             assert_eq!(avg.sum(), 1);
             assert_eq!(avg.n_entries(), 1);
             assert_eq!(avg.val(), 1);
 
             // Add 2
-            avg.update_u8(None, Some(2));
+            avg.update(None, Some(2));
             assert_eq!(avg.sum(), 3);
             assert_eq!(avg.n_entries(), 2);
             assert_eq!(avg.val(), 1); // floor(3/2)
 
             // Update 2 -> 4
-            avg.update_u8(Some(2), Some(4));
+            avg.update(Some(2), Some(4));
             assert_eq!(avg.sum(), 5);
             assert_eq!(avg.n_entries(), 2);
             assert_eq!(avg.val(), 2); // floor(5/2)
 
             // Remove 1
-            avg.update_u8(Some(1), None);
+            avg.update(Some(1), None);
             assert_eq!(avg.sum(), 4);
             assert_eq!(avg.n_entries(), 1);
             assert_eq!(avg.val(), 4);
@@ -297,14 +297,14 @@ mod market {
             let mut avg = RunningAverage::default();
 
             // Add a few values
-            avg.update_u8(None, Some(1));
-            avg.update_u8(None, Some(2));
-            avg.update_u8(None, Some(3));
+            avg.update(None, Some(1));
+            avg.update(None, Some(2));
+            avg.update(None, Some(3));
 
             // Remove them in arbitrary order
-            avg.update_u8(Some(2), None);
-            avg.update_u8(Some(1), None);
-            avg.update_u8(Some(3), None);
+            avg.update(Some(2), None);
+            avg.update(Some(1), None);
+            avg.update(Some(3), None);
 
             // Everything removed
             assert_eq!(avg.sum(), 0);
@@ -312,7 +312,7 @@ mod market {
             assert_eq!(avg.val(), 0);
 
             // Now add just a 5
-            avg.update_u8(None, Some(5));
+            avg.update(None, Some(5));
 
             assert_eq!(avg.sum(), 5);
             assert_eq!(avg.n_entries(), 1);

@@ -22,31 +22,24 @@ impl RunningAverage {
     }
 
     /// Update the running average with an optional previous value and an optional new value.
-    ///
-    /// This covers insert (None -> Some), update (Some -> Some) and delete (Some -> None).
-    pub fn update_u64(&mut self, prev: Option<u64>, new: Option<u64>) {
+    pub fn update(&mut self, prev: Option<u8>, new: Option<u8>) {
         let mut sum = self.sum;
         let mut total = self.total;
 
         if let Some(p) = prev {
-            if total > 0 {
-                sum = sum.saturating_sub(p);
+            if total != 0 {
+                sum = sum.saturating_sub(p as u64);
                 total -= 1;
             }
         }
 
         if let Some(n) = new {
-            sum = sum.saturating_add(n);
+            sum = sum.saturating_add(n as u64);
             total = total.saturating_add(1);
         }
 
         self.sum = sum;
         self.total = total;
-    }
-
-    /// Convenience for `u8` inputs (ratings).
-    pub fn update_u8(&mut self, prev: Option<u8>, new: Option<u8>) {
-        self.update_u64(prev.map(|v| v as u64), new.map(|v| v as u64));
     }
 
     pub fn n_entries(&self) -> u32 {
@@ -57,12 +50,11 @@ impl RunningAverage {
         self.sum
     }
 
-    /// Integer average. Returns 0 if `total == 0`.
-    pub fn val(&self) -> u64 {
+    pub fn val(&self) -> u8 {
         if self.total == 0 {
             0
         } else {
-            self.sum / (self.total as u64)
+            (self.sum / self.total as u64) as u8
         }
     }
 }
