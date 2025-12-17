@@ -3,9 +3,9 @@ import { Plus, Loader2 } from 'lucide-react';
 import { useRatings } from '@/hooks/usePapi';
 import { RatingCard } from './RatingCard';
 
-export function RatingsList({ onNavigate }: { onNavigate: (p: string) => void }) {
+export function RatingsList({ onNavigate, idToShop}: { onNavigate: (p: string) => void , idToShop: (id: number) => string}) {
   const [filter, setFilter] = useState('');
-  const { ratings, loading, error } = useRatings(filter);
+  const { ratings, loading, error } = useRatings(idToShop, filter);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 p-6">
@@ -19,6 +19,8 @@ export function RatingsList({ onNavigate }: { onNavigate: (p: string) => void })
             <Plus size={20} />Add Rating
           </button>
         </div>
+        {/*
+
         <input
           type="text"
           placeholder="Filter by seller name..."
@@ -26,6 +28,7 @@ export function RatingsList({ onNavigate }: { onNavigate: (p: string) => void })
           onChange={e => setFilter(e.target.value)}
           className="w-full px-4 py-3 rounded-lg border border-gray-200 mb-6 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
+        */}
         {error && <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-4">{error}</div>}
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="animate-spin text-indigo-600" size={32} /></div>

@@ -1,52 +1,71 @@
 import type { Rating, RatingInput, SubmitResult } from '@/types';
 import { createInkSdk } from "@polkadot-api/sdk-ink";
-import { FixedSizeBinary } from 'polkadot-api';
+import { createClient } from "polkadot-api";
+import { withPolkadotSdkCompat } from "polkadot-api/polkadot-sdk-compat";
+import { getWsProvider } from "polkadot-api/ws-provider";
+import { contracts } from "@polkadot-api/descriptors";
 
 import { getSigner } from "./signer";
 
 const WS_ENDPOINT = import.meta.env.VITE_WS_ENDPOINT || 'ws://127.0.0.1:9944';
-const CONTRACT_ADDR = import.meta.env.VITE_WS_ENDPOINT
+const CONTRACT_ADDR = import.meta.env.VITE_CONTRACT_ADDRESS
 const ALICE = getSigner("Alice");
 
-export async function getRatings(sellerFilter?: string): Promise<Rating[]> {
-  await new Promise(r => setTimeout(r, 300));
-  
-  // TODO: Replace with real PAPI call:
-  const { createClient } = await import('polkadot-api');
-  const { getWsProvider } = await import('polkadot-api/ws-provider/web');
-  const { contracts } = await import('@polkadot-api/descriptors');
-  const provider = getWsProvider(WS_ENDPOINT);
-  const client = createClient(provider);
+const provider = getWsProvider(WS_ENDPOINT);
+const client = createClient(withPolkadotSdkCompat(provider));
 
-  const inkSdk = createInkSdk(client);
-  const repContract = inkSdk.getContract(contracts.mark3t_rep, CONTRACT_ADDR);
-  console.log("fetching ratings")
+const inkSdk = createInkSdk(client);
+const repContract = inkSdk.getContract(contracts.mark3t_rep, CONTRACT_ADDR);
+
+export async function getRatings(idToShop: (id: number) => string, sellerFilter?: string): Promise<Rating[]> {
+  
   let ratings = await repContract.query("get_all_seller_ratings", { origin: ALICE.address });
 
   console.log(ratings);
-  /*
-  if (sellerFilter) {
-    return mockRatings.filter(r => r.seller.toLowerCase().includes(sellerFilter.toLowerCase()));
-  }
-  */
-  return [];
+  if (ratings.success) {
+    return ratings.value.response.map((r, index) => {return { 
+        id: index,
+        seller_id: r.seller_id,
+        seller: idToShop(r.seller_id),
+        date: new Date(Number(r.timestamp) * 1000).toDateString(),
+        comment: r.remark || "",
+        article: r.article_score,
+        shipping: r.shipping_score,
+        communication: r.seller_score
+    }});
+
+  } else return [];
+
+}
+
+function rnd(bound: number = 20): number {
+    return Math.floor(Math.random() * bound) + 1;
 }
 
 export async function submitRating(rating: RatingInput, signer: any): Promise<SubmitResult> {
-  await new Promise(r => setTimeout(r, 1000));
-  
-  // TODO: Replace with real PAPI call:
-  // const tx = api.tx.SellerRatings.submit_rating({...rating});
-  // const result = await tx.signAndSubmit(signer);
-  
-  const newRating: Rating = {
-    ...rating,
-    id: Date.now(),
-    date: new Date().toISOString().split('T')[0],
-  };
-  
-  
-  return { success: true, hash: '0x' + Math.random().toString(16).slice(2, 18) };
+
+  let submitData = { seller_rating: {
+          purchase_id: BigInt(rnd(10000000)),
+          timestamp: BigInt(Date.now()),
+          buyer: rnd(14),
+          seller_id: rating.seller_id,
+          article_id: rnd(20),
+          seller_score: rating.communication,
+          article_score: rating.article,
+          shipping_score: rating.shipping,
+          remark: rating.comment,
+      }
+    }
+    console.log(submitData)
+  //console.log(signer);
+  const tx = repContract.send("submit_seller_rating", {
+                origin: ALICE.address,
+                data: submitData
+            });
+
+  const result = await tx.signAndSubmit(ALICE.signer);
+  console.log(result);
+  return { success: result.ok, hash: ALICE.address};
 }
 
 export async function connectWallet() {
@@ -56,5 +75,8 @@ export async function connectWallet() {
   const ext = await connectInjectedExtension(extensions[0]);
   const accounts = ext.getAccounts();
   if (accounts.length === 0) throw new Error('No accounts found');
-  return { account: accounts[0], signer: ext.signer };
+  return { account: accounts[0], signer: ext.signer};
 }
+
+
+

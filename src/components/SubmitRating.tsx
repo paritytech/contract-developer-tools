@@ -3,13 +3,15 @@ import { ArrowLeft, Package, Truck, MessageCircle, Loader2 } from 'lucide-react'
 import { useWallet, useSubmitRating } from '@/hooks/usePapi';
 import { StarRating } from './StarRating';
 
-export function SubmitRating({ onNavigate }: { onNavigate: (p: string) => void }) {
-  const [form, setForm] = useState({ seller: '', comment: '', article: 0, shipping: 0, communication: 0 });
+
+export function SubmitRating({ onNavigate, idToShop}: { onNavigate: (p: string) => void, idToShop: (id: number) => string}) {
+  const [form, setForm] = useState({ seller_id: 0, seller: '', comment: '', article: 0, shipping: 0, communication: 0 });
   const { wallet, connect, connecting } = useWallet();
   const { submit, submitting, result, error } = useSubmitRating();
 
+
   async function handleSubmit() {
-    if (!form.seller || !form.article || !form.shipping || !form.communication) {
+    if (/*!form.seller || */ !form.article || !form.shipping || !form.communication) {
       alert('Please fill all required fields'); return;
     }
     if (!wallet) { alert('Please connect wallet first'); return; }
@@ -49,8 +51,13 @@ export function SubmitRating({ onNavigate }: { onNavigate: (p: string) => void }
           {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">{error}</div>}
           <div className="space-y-5">
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Seller Id *</label>
+              <input type='number' value={form.seller_id} onChange={e => setForm({ ...form, seller_id: Number(e.target.value), seller: idToShop(Number(e.target.value))})}
+                className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter seller Id" />
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Seller Name *</label>
-              <input type="text" value={form.seller} onChange={e => setForm({ ...form, seller: e.target.value })}
+              <input type="text" value={idToShop(form.seller_id)} /*onChange={e => setForm({ ...form, seller: e.target.value })} */ disabled={true}
                 className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter seller name" />
             </div>
             <div>

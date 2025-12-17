@@ -1,5 +1,6 @@
 export interface Rating {
   id: number;
+  seller_id: number;
   seller: string;
   date: string;
   comment: string;
@@ -9,6 +10,7 @@ export interface Rating {
 }
 
 export interface RatingInput {
+  seller_id:number;
   seller: string;
   comment: string;
   article: number;

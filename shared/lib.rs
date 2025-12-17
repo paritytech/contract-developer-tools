@@ -22,7 +22,7 @@ pub const NO_RATING: u8 = 255;
 
 //#[ink(storage)]
 #[derive(Debug)]
-#[derive(Default)]
+#[derive(Default, Clone)]
 #[ink::storage_item(packed)]
 pub struct Rating {
 

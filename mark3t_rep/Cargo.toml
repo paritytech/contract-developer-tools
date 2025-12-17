@@ -1,18 +1,19 @@
 [package]
 name = "mark3t_rep"
-version = "0.1.0"
-authors = ["[your_name] <[your_email]>"]
-edition = "2024"
+#version.workspace = true
+#authors.workspace = true
+edition="2024"
+#edition.workspace = true
 
 [dependencies]
-ink = { git = "https://github.com/use-ink/ink", tag = "v6.0.0-beta.1", version = "6.0.0-beta.1", default-features = false, features = ["unstable-hostfn"] }
-scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
-scale-info = { version = "2.6", default-features = false, features = ["derive"], optional = true }
+ink = { workspace = true }
+scale = { workspace = true }
+scale-info = { workspace = true }
 shared = { path = "../shared", default-features = false }
-rep_system = { path = "../rep_system", default-features = false, features = ["ink-as-dependency"] }
+rep_system = { path = "../rep_system", default-features = false}
 
 [dev-dependencies]
-ink_e2e = { git = "https://github.com/use-ink/ink", tag = "v6.0.0-beta.1", version = "6.0.0-beta.1" }
+ink_e2e = { workspace = true }
 
 [lib]
 path = "lib.rs"
@@ -24,6 +25,7 @@ std = [
     "scale/std",
     "scale-info/std",
     "rep_system/std",
+    "shared/std"
 ]
 ink-as-dependency = []
 e2e-tests = []
