@@ -6,16 +6,6 @@ mod market {
     use ink::{storage::Mapping};
     use ink::prelude::vec::Vec;
     use shared::{ProductMetadata, ProductReview, SellerMetadata, SellerReview};
-    /// Event emitted when a context is created.
-    #[ink(event)]
-    pub struct ContextCreated {
-        #[ink(topic)]
-        from: Option<Address>,
-        #[ink(topic)]
-        to: Option<Address>,
-        #[ink(topic)]
-        id: Vec<u8>,
-    }
 
     pub type SellerId = [u8; 32];
     pub type ProductId = [u8; 32];
