@@ -5,7 +5,7 @@
 mod market {
     use ink::{storage::Mapping};
     use ink::prelude::vec::Vec;
-    use shared::{ProductMetadata, ProductReview, SellerMetadata, SellerReview};
+    use contract_tools::{ProductMetadata, ProductReview, SellerMetadata, SellerReview};
 
     pub type SellerId = [u8; 32];
     pub type ProductId = [u8; 32];
@@ -251,7 +251,7 @@ mod market {
     mod tests {
         /// Imports all the definitions from the outer scope so we can use them here.
         use super::*;
-        use shared::RunningAverage;
+        use contract_tools::RunningAverage;
 
         #[ink::test]
         fn running_average_add_update_remove_exact() {

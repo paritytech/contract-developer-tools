@@ -8,7 +8,7 @@ authors = ["Parity Technologies"]
 ink = { workspace = true }
 scale = { workspace = true }
 scale-info = { workspace = true }
-shared = { path = "../../lib", default-features = false }
+contract_tools = { path = "../../lib", default-features = false }
 
 [dev-dependencies]
 ink_e2e = { workspace = true }
@@ -22,7 +22,7 @@ std = [
     "ink/std",
     "scale/std",
     "scale-info/std",
-    "shared/std",
+    "contract_tools/std",
 ]
 ink-as-dependency = []
 e2e-tests = []
