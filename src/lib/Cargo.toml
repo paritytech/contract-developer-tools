@@ -19,13 +19,3 @@ std = [
     "scale/std",
     "scale-info/std",
 ]
-# ink-as-dependency = []
-
-# [package.metadata.ink-lang]
-# abi = "ink"
-
-# [lints.rust.unexpected_cfgs]
-# level = "warn"
-# check-cfg = [
-#     'cfg(ink_abi, values("ink", "sol", "all"))'
-# ]
