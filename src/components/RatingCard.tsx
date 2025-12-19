@@ -2,7 +2,12 @@ import { User, Calendar, Package, Truck, MessageCircle } from 'lucide-react';
 import { StarRating } from './StarRating';
 import type { Rating } from '@/types';
 
-export function RatingCard({ rating }: { rating: Rating }) {
+interface RatingCardProps {
+  rating: Rating;
+  onSellerClick?: (sellerId: number, sellerName: string) => void;
+}
+
+export function RatingCard({ rating, onSellerClick }: RatingCardProps) {
   const avg = ((rating.article + rating.shipping + rating.communication) / 3).toFixed(1);
   return (
     <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100 hover:shadow-lg transition-shadow">
@@ -12,7 +17,12 @@ export function RatingCard({ rating }: { rating: Rating }) {
             <User size={20} className="text-indigo-600" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-800">{rating.seller}</h3>
+            <h3
+              className="font-semibold text-gray-800 hover:text-indigo-600 cursor-pointer transition-colors"
+              onClick={() => onSellerClick?.(rating.seller_id, rating.seller)}
+            >
+              {rating.seller}
+            </h3>
             <div className="flex items-center gap-1 text-sm text-gray-500">
               <Calendar size={12} />{rating.date}
             </div>

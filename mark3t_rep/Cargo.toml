@@ -1,9 +1,10 @@
 [package]
 name = "mark3t_rep"
+
 #version.workspace = true
-#authors.workspace = true
-edition="2024"
-#edition.workspace = true
+version = "0.1.0"
+authors = ["Parity Technologies"]
+edition = "2024"
 
 [dependencies]
 ink = { workspace = true }

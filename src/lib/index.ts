@@ -6,7 +6,7 @@ import { createClient } from "polkadot-api";
 import { withPolkadotSdkCompat } from "polkadot-api/polkadot-sdk-compat";
 import { getWsProvider } from "polkadot-api/ws-provider";
 import { contracts } from "@polkadot-api/descriptors";
-import { FixedSizeBinary } from "polkadot-api";
+//import { FixedSizeBinary } from "polkadot-api";
 
 import { getSigner } from "./signer";
 
@@ -14,7 +14,7 @@ import { createInterface } from "readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 
 const nodeAddress = "ws://localhost:9944/"
-const MARKET_CONTRACT_ADDR = "0xad57b56fd63fcaf5d29dec9c27830ede8459fd36";
+const MARKET_CONTRACT_ADDR = "0x48550a4bb374727186c55365b7c9c0a1a31bdafe";
 function getContract(inkSdk: ReturnType<typeof createInkSdk>) {
     return inkSdk.getContract(contracts.mark3t_rep, MARKET_CONTRACT_ADDR);
 }

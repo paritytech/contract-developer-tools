@@ -17,11 +17,13 @@ const client = createClient(withPolkadotSdkCompat(provider));
 const inkSdk = createInkSdk(client);
 const repContract = inkSdk.getContract(contracts.mark3t_rep, CONTRACT_ADDR);
 
-export async function getRatings(idToShop: (id: number) => string, sellerFilter?: string): Promise<Rating[]> {
+export async function getRatings(idToShop: (id: number) => string, sellerId?: number, sellerFilter?: string): Promise<Rating[]> {
   
-  let ratings = await repContract.query("get_all_seller_ratings", { origin: ALICE.address });
+  let ratings = sellerId ?
+    await repContract.query("get_all_seller_ratings_for", { origin: ALICE.address, data: { seller_id: sellerId! } }) :
+    await repContract.query("get_all_seller_ratings", { origin: ALICE.address });
 
-  console.log(ratings);
+  console.log(sellerId, ratings);
   if (ratings.success) {
     return ratings.value.response.map((r, index) => {return { 
         id: index,
@@ -38,6 +40,7 @@ export async function getRatings(idToShop: (id: number) => string, sellerFilter?
 
 }
 
+
 function rnd(bound: number = 20): number {
     return Math.floor(Math.random() * bound) + 1;
 }
@@ -46,7 +49,7 @@ export async function submitRating(rating: RatingInput, signer: any): Promise<Su
 
   let submitData = { seller_rating: {
           purchase_id: BigInt(rnd(10000000)),
-          timestamp: BigInt(Date.now()),
+          timestamp: BigInt(1),
           buyer: rnd(14),
           seller_id: rating.seller_id,
           article_id: rnd(20),
@@ -60,7 +63,18 @@ export async function submitRating(rating: RatingInput, signer: any): Promise<Su
   //console.log(signer);
   const tx = repContract.send("submit_seller_rating", {
                 origin: ALICE.address,
-                data: submitData
+                data: { seller_rating: {
+          purchase_id: BigInt(rnd(10000000)),
+          timestamp: BigInt(1),
+          buyer: rnd(14),
+          seller_id: rating.seller_id,
+          article_id: rnd(20),
+          seller_score: rating.communication,
+          article_score: rating.article,
+          shipping_score: rating.shipping,
+          remark: rating.comment,
+                }
+                }
             });
 
   const result = await tx.signAndSubmit(ALICE.signer);

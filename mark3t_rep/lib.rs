@@ -8,10 +8,10 @@ mod mark3t_rep {
     use ink::prelude::string::String;
     //use ink::prelude::collections::HashMap;
 
-    use ink::storage::{Mapping, StorageVec};
+    use ink::storage::{Mapping};
     use ink::storage::traits::{Packed, StorageKey};
-    
-    use scale::{Encode, EncodeLike};
+
+    use scale::{EncodeLike};
     use shared::{ContextId, EntityId, Rating, ScoreUpdated, TransactionId, *};
     //use shared::{ContextId, EntityId, EntityType, Error, NO_ENTITY, Person, Score};
     use shared::NO_RATING;
@@ -77,7 +77,7 @@ mod mark3t_rep {
             };
             
             // vv move to App layer
-            instance.register_context(CONTEXT);
+            let _ = instance.register_context(CONTEXT);
             instance.insert_relation(CONTEXT, TYPE_ARTICLE, TYPE_BUYER);
             instance.insert_relation(CONTEXT, TYPE_SHIPPING, TYPE_BUYER);
             // ^^ 
@@ -103,15 +103,10 @@ mod mark3t_rep {
         }
 
         #[ink(message)]
-        pub fn get_seller_score(&self, seller_id: SellerId) -> Score {
-            self.get_score(CONTEXT, seller_id)
-        }
-
-        #[ink(message)]
         pub fn get_all_seller_ratings(&self) -> Vec<SellerRating> {
             let mut result = Vec::new();
 
-            let ratings = self.get_ratings(CONTEXT, SELL_TYPES.to_vec());
+            let ratings = self.get_ratings(CONTEXT, &SELL_TYPES.to_vec());
             ratings.iter().for_each(|t| {
                 result.push(Mark3tRep::to_seller_rating_from_vec(t.0, t.1.clone()));
             });
@@ -120,8 +115,23 @@ mod mark3t_rep {
         }
 
         #[ink(message)]
+        pub fn get_all_seller_ratings_for(&self, seller_id: SellerId) -> Vec<SellerRating> {
+
+            let result: Vec<SellerRating> = self.get_ratings_for_entity(CONTEXT, seller_id, &SELL_TYPES.to_vec()).iter().map(|tx_ratings| {
+                Mark3tRep::to_seller_rating_from_vec(tx_ratings.0, tx_ratings.1.clone())
+            }).collect();
+
+            return result;
+            /*
+            self.get_transactions_for_entity(CONTEXT, seller_id).iter().flat_map(|tr| {
+                self.get_ratings_for_transaction(CONTEXT, tr)
+            });
+            */
+        }
+
+        #[ink(message)]
         pub fn get_seller_rating(&self, transaction: TransactionId) -> Option<SellerRating> {
-            let ratings = self.get_ratings_for_transaction(CONTEXT, transaction, SELL_TYPES.to_vec());
+            let ratings = self.get_ratings_for_transaction(CONTEXT, transaction, &SELL_TYPES.to_vec());
             if ratings.is_empty() {
                 return None;
             } else {
@@ -130,6 +140,16 @@ mod mark3t_rep {
         }
 
         
+        #[ink(message)]
+        pub fn get_seller_score(&self, seller_id: SellerId) -> Score {
+            self.get_score(CONTEXT, seller_id)
+        }
+
+        #[ink(message)]
+        pub fn get_purchases(&self, seller_id: SellerId) -> Vec<PurchaseId> {
+            return self.get_transactions_for_entity(CONTEXT, seller_id);
+        }
+
 
         fn to_seller_rating_from_vec(transaction: TransactionId, ratings: Vec<Rating>) -> SellerRating {
             let article_rating = ratings.get(0).unwrap();
@@ -170,7 +190,7 @@ mod mark3t_rep {
                 }
             };
 
-            let _ = self.update_score(CONTEXT, seller_id, TYPE_SELLER, score);
+            let _ = self.update_score(CONTEXT, seller_id, score);
 
             // TODO or submit in generic layer?
             emit_event(ScoreUpdated {
@@ -185,24 +205,24 @@ mod mark3t_rep {
 
         // vv Generic stuff to move to Rep_System vv
 
-        fn get_ratings_for_entity(&self, context: ContextId, entity_id: EntityId, entity_type: EntityType) -> Vec<Rating> {
-            let mut ratings = Vec::new();
+        //#[ink(message)]
+        fn get_ratings_for_entity(&self, context: ContextId, entity_id: EntityId, entity_types: &Vec<EntityType>) -> Vec<(TransactionId, Vec<Rating>)> {
+            let mut result = Vec::new();
             match self.transaction_per_entity.get((context, entity_id)) {
                 Some(txs) => {
                     txs.iter().for_each(|tx| {
-                        match self.ratings_per_transaction.get((context, tx, entity_type)) {
-                            Some(rating) => ratings.push(rating),
-                            _ => ()
-                        }
+                        let tx_ratings = self.get_ratings_for_transaction(context, *tx, entity_types);
+                        result.push((*tx, tx_ratings));
                     });
                 },
-                _ => () //TODO
+                _ => () //TODO unknown entity
             }
 
-            return ratings;
+            return result;
         }
 
-        fn get_ratings_for_transaction(&self, context: ContextId, transaction: TransactionId, entity_types: Vec<EntityType>) -> Vec<Rating> {
+        //#[ink(message)]
+        fn get_ratings_for_transaction(&self, context: ContextId, transaction: TransactionId, entity_types: &Vec<EntityType>) -> Vec<Rating> {
             let mut ratings = Vec::new();
             entity_types.iter().for_each(|et| {
                 let key = (context, transaction, et);
@@ -220,13 +240,14 @@ mod mark3t_rep {
             return ratings;
         }
 
-        fn get_ratings(&self, context: ContextId, entity_types: Vec<EntityType>) -> Vec<(TransactionId, Vec<Rating>)> { 
+        //#[ink(message)]
+        fn get_ratings(&self, context: ContextId, entity_types: &Vec<EntityType>) -> Vec<(TransactionId, Vec<Rating>)> { 
             let mut result = Vec::new();
             match self.transactions.get(context) {
                 Some(txs) => {
                     
                     txs.iter().copied().for_each(|tx| { 
-                        let ratings = self.get_ratings_for_transaction(context, tx, entity_types.clone());
+                        let ratings = self.get_ratings_for_transaction(context, tx, entity_types);
                         result.push((tx, ratings));
                     });
                 },
@@ -238,17 +259,12 @@ mod mark3t_rep {
             return result;
         }
 
-        fn update_score(&mut self, context: ContextId, entity_id: EntityId, entity_type: EntityType, score: Score) -> Result<(), Error> {
-            self.check_owner(context)?;
-
-            let key: EntityKey = (CONTEXT, entity_id);
-
-            self.score_cache.insert(key, &score);
-
-            return Ok(());
-
+        //#[ink(message)]
+        pub fn get_transactions_for_entity(&self, context: ContextId, entity_id: EntityId) -> Vec<TransactionId> {
+            return self.transaction_per_entity.get((context, entity_id)).unwrap_or(Vec::new());
         }
 
+        //#[ink(message)]
         fn register_context(&mut self, context: ContextId) -> Result<(), Error> {
             if self.owners.contains(context) {
                 return Err(Error::ContextAlreadyExists)
@@ -295,7 +311,7 @@ mod mark3t_rep {
             Ok(())
         }
 
-       
+        
         fn get_score(&self, context: ContextId, entity: EntityId) -> Score {
             // TODO also checkOwner??
             let key: EntityKey = (context, entity);
@@ -304,6 +320,17 @@ mod mark3t_rep {
                 Some(score) => return score,
                 None => return NO_RATING
             }
+        }
+
+        fn update_score(&mut self, context: ContextId, entity_id: EntityId, /*entity_type: EntityType, */score: Score) -> Result<(), Error> {
+            self.check_owner(context)?;
+
+            let key: EntityKey = (CONTEXT, entity_id);
+
+            self.score_cache.insert(key, &score);
+
+            return Ok(());
+
         }
 
         fn check_owner(&self, context: ContextId) -> Result<(), Error> {
@@ -345,11 +372,13 @@ mod mark3t_rep {
         //const BUYER1: BuyerId = [69; 32];   
         //const ARTICLE1: [u8;32] = [1; 32];
         const SELLER1: SellerId = 42;
+        const SELLER2: SellerId = 84;
         const BUYER1: BuyerId = 69;
         const ARTICLE1: u8 = 1;
 
         const PURCHASE1: u64 = 1234;
-        const PURCHASE2: u64 = 5678;
+        const PURCHASE2: u64 = 3456;
+        const PURCHASE3: u64 = 5678;
 
         /**
          * Sample dummy test
@@ -358,49 +387,62 @@ mod mark3t_rep {
         fn get_seller_score() {
 
             let mut market_rep = Mark3tRep::new();
-            let ctx = 1;
-            
-            //let owner = Address::from([2; 20]);
-            assert_eq!(market_rep.get_seller_score(SELLER1), NO_RATING as u8); // TODO or error for non-existent context?
-            //let _ = market_rep.register_context(ctx);
-            //assert_eq!(market_rep.get_seller_score(SELLER1), NO_RATING as u8);
-
-        }
-        #[ink::test]
-        fn submit_seller_rating() {
-            
-            let mut market_rep = Mark3tRep::new();
-            
-            //let owner = Address::from([2; 20]); 
-
+       
             assert_eq!(market_rep.get_seller_score(SELLER1), NO_RATING as u8);
 
-            //let seller_score1 = 90;
-            //let article_score1 = 80;
-            //let shipping_score1 = 60;
-            //let submit_res1 = market_rep.submit_seller_rating(PURCHASE1, BUYER1, SELLER1, ARTICLE1, seller_score1, article_score1, shipping_score1, Some("Great seller.".into()));
-            let rating1 = SellerRating{purchase_id: PURCHASE1, timestamp: 1, buyer: BUYER1, seller_id: SELLER1, article_id: ARTICLE1, seller_score: 5, article_score: 4, shipping_score: 5, remark: Some("Great seller.".into())};
-            let submit_res1 = market_rep.submit_seller_rating(rating1.clone());
-            assert_eq!(Ok(()), submit_res1, "Error submitting seller rating");
+            submit(&mut market_rep, SellerRating{purchase_id: PURCHASE1, timestamp: 1, buyer: BUYER1, seller_id: SELLER1, article_id: ARTICLE1, seller_score: 5, article_score: 4, shipping_score: 5, remark: Some("Great seller.".into())});
+
             assert_eq!(market_rep.get_seller_score(SELLER1), 100, "Wrong score after rating 1. submission.");
 
-            //let seller_score2 = 30;
-            //let article_score2 = 10;
-            //let shipping_score2 = 20;
-            //let submit_res2 = market_rep.submit_seller_rating(PURCHASE2, BUYER1, SELLER1, ARTICLE1, seller_score2, article_score2, shipping_score2, Some("Could be better".into()));
-            let rating2 = SellerRating{purchase_id: PURCHASE2, timestamp: 2, buyer: BUYER1, seller_id: SELLER1, article_id: ARTICLE1, seller_score: 3, article_score: 4, shipping_score: 3, remark: Some("Could be better".into())};
-            let submit_res2 = market_rep.submit_seller_rating(rating2.clone());
+            submit(&mut market_rep, SellerRating{purchase_id: PURCHASE2, timestamp: 2, buyer: BUYER1, seller_id: SELLER1, article_id: ARTICLE1, seller_score: 3, article_score: 4, shipping_score: 3, remark: Some("Could be better".into())});
 
-
-            assert_eq!(Ok(()), submit_res2, "Error submitting seller rating");
             assert_eq!(market_rep.get_seller_score(SELLER1), 80, "Wrong score after rating 2. submission.");
 
-            let all_ratings = market_rep.get_all_seller_ratings();
-            all_ratings.iter().for_each(|t| {
-                println!("{:?}", t);
-            });
+
+        }
+
+
+
+        #[ink::test]
+        fn get_ratings() {
             
-            assert_eq!(2, all_ratings.len());
+            let mut market_rep = Mark3tRep::new();
+
+            submit(&mut market_rep, create_rating(PURCHASE1, SELLER1));
+            submit(&mut market_rep, create_rating(PURCHASE2, SELLER2));
+            submit(&mut market_rep, create_rating(PURCHASE3, SELLER1));
+
+            let all_ratings = market_rep.get_all_seller_ratings();
+            all_ratings.iter().for_each(|t| println!("{:?}", t));
+            
+            assert_eq!(3, all_ratings.len(), "Wrong number of all ratings");
+
+            let ratings_for1 = market_rep.get_all_seller_ratings_for(SELLER1);
+            assert_eq!(2, ratings_for1.len(), "Wrong number of ratings for Seller 1");
+
+            let ratings_for2 = market_rep.get_all_seller_ratings_for(SELLER2);
+            assert_eq!(1, ratings_for2.len(), "Wrong number of ratings for Seller 2");
+
+        }
+
+        fn create_rating(purchase_id: PurchaseId, seller_id: SellerId) -> SellerRating {
+            return SellerRating{purchase_id: purchase_id, timestamp: 1, buyer: BUYER1, seller_id: seller_id, article_id: ARTICLE1, seller_score: 5, article_score: 4, shipping_score: 1, remark: None};
+        }
+
+        fn submit(market_rep: &mut Mark3tRep, rating: SellerRating) {
+            let submit_res = market_rep.submit_seller_rating(rating.clone());
+            assert_eq!(Ok(()), submit_res, "Error submitting seller rating");
+        }
+
+        #[ink::test]
+        fn get_transactions() {
+            let mut market_rep = Mark3tRep::new();
+
+            submit(&mut market_rep, create_rating(PURCHASE1, SELLER1));
+            submit(&mut market_rep, create_rating(PURCHASE2, SELLER2));
+            submit(&mut market_rep, create_rating(PURCHASE3, SELLER1));
+
+            assert_eq!(2, market_rep.get_purchases(SELLER1).len());
 
         }
 

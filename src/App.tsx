@@ -5,8 +5,8 @@ import { SubmitRating } from './components/SubmitRating';
 const seller_names: Map<number, string> = new Map();
 
 
-const names = ["Alice", "Bob", "Gav", "Ionut"]
-const goods = ["Book", "Coffee", "Tea", "Drug", "Movie"]
+const names = ["Alice", "Bob", "Carol", "Dave"]
+const goods = ["Book", "Coffee", "Tea", "Tool", "Movie"]
 const shops = ["Shop", "Store", "Emporium", "Outlet"]
 
 function getRandomShop(): string {

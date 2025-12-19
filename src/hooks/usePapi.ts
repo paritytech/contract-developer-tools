@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { getRatings, submitRating, connectWallet } from '@/lib/papi-client';
 import type { Rating, RatingInput, SubmitResult } from '@/types';
 
-export function useRatings(idToShop: (id: number) => string, sellerFilter?: string) {
+export function useRatings(idToShop: (id: number) => string, sellerId?: number, sellerFilter?: string) {
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -11,7 +11,7 @@ export function useRatings(idToShop: (id: number) => string, sellerFilter?: stri
     setLoading(true);
     setError(null);
     try {
-      setRatings(await getRatings(idToShop, sellerFilter));
+      setRatings(await getRatings(idToShop, sellerId, sellerFilter));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {

@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { Plus, Loader2 } from 'lucide-react';
 import { useRatings } from '@/hooks/usePapi';
 import { RatingCard } from './RatingCard';
+import { SellerRatingsModal } from './SellerRatingsModal';
 
 export function RatingsList({ onNavigate, idToShop}: { onNavigate: (p: string) => void , idToShop: (id: number) => string}) {
-  const [filter, setFilter] = useState('');
-  const { ratings, loading, error } = useRatings(idToShop, filter);
+  //const [filter, setFilter] = useState('');
+  const { ratings, loading, error } = useRatings(idToShop);
+  const [selectedSeller, setSelectedSeller] = useState<{ id: number; name: string } | null>(null);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 p-6">
@@ -35,9 +37,25 @@ export function RatingsList({ onNavigate, idToShop}: { onNavigate: (p: string) =
         ) : ratings.length === 0 ? (
           <div className="text-center py-12 text-gray-500">No ratings found</div>
         ) : (
-          <div className="space-y-4">{ratings.map(r => <RatingCard key={r.id} rating={r} />)}</div>
+          <div className="space-y-4">
+            {ratings.map(r => (
+              <RatingCard
+                key={r.id}
+                rating={r}
+                onSellerClick={(id, name) => setSelectedSeller({ id, name })}
+              />
+            ))}
+          </div>
         )}
       </div>
+
+      {selectedSeller && (
+        <SellerRatingsModal
+          seller={selectedSeller.name}
+          sellerId={selectedSeller.id}
+          onClose={() => setSelectedSeller(null)}
+        />
+      )}
     </div>
   );
 }
