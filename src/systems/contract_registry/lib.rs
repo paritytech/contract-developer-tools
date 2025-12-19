@@ -1,21 +1,43 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::Address;
+use ink::env::BlockNumber;
 use ink::prelude::{string::String};
+
+pub type Version = u32;
 
 #[ink::storage_item(packed)]
 #[derive(Default, Clone)]
 pub struct PublishedContract {
-    pub publish_block: u64,
+    /**
+        The block number when this contract version was published
+     */
+    pub publish_block: BlockNumber,
+
+    /**
+        The address of the published contract
+     */
     pub address: Address,
+
+    /**
+        Bulletin chain IPFS URI pointing this contract version's metadata
+     */
     pub metadata_uri: String,
 }
 
 #[ink::storage_item(packed)]
 #[derive(Default, Clone)]
 pub struct NamedContractInfo {
+    /**
+        The owner of the contract name
+     */
     pub owner: Address,
-    pub version_count: u32,
+
+    /**
+        The number of versions published under this contract name
+        `version_count - 1` refers to the latest published version
+     */
+    pub version_count: Version,
 }
 
 #[ink::contract]
@@ -24,20 +46,21 @@ mod contract_registry {
     use ink::{storage::Mapping};
     use ink::prelude::{string::String};
 
-    use crate::{ NamedContractInfo, PublishedContract};
+    use crate::{NamedContractInfo, PublishedContract, Version};
 
     #[ink(storage)]
     pub struct ContractRegistry {
 
         /**
-            List of all contract names
+            List of all existing contract names
          */
         pub contract_names: StorageVec<String>,
 
         /**
-            Maps `(contract_name, version)` to a specific version of a published contract
+            Stores all published versions of named contracts where the key for
+            an individual versioned contract is given by `(contract_name, version)`
          */
-        pub published_contract: Mapping<(String, u32), PublishedContract>,
+        pub published_contract: Mapping<(String, Version), PublishedContract>,
 
         /**
             Stores info about each registered contract name
@@ -55,13 +78,17 @@ mod contract_registry {
             }
         }
 
-        /*
-         *
+        /**
+            Publish the latest version of a contract registered under name `contract_name`
+
+            The caller only has permission to publish a new version of `contract_name` if
+            either the name is available or they are already the owner of the name.
          */
         #[ink(message)]
         pub fn publish_latest(&mut self, contract_name: String, contract_address: Address, metadata_uri: String) {
             let caller = self.env().caller();
-            let publish_block = self.env().block_number() as u64;
+
+            // Get existing info or register new `contract_name` with caller as owner
             let mut info = match self.info.get(&contract_name) {
                 Some(info) => info,
                 None => {
@@ -87,9 +114,9 @@ mod contract_registry {
                 .expect("publish_latest: version_count overflow");
             self.info.insert(&contract_name, &info);
 
-            // Create new PublishedContract & insert @ latest idx
+            // Create new `PublishedContract` & insert @ latest idx
             let latest = PublishedContract {
-                publish_block,
+                publish_block: self.env().block_number(),
                 address: contract_address,
                 metadata_uri,
             };
@@ -99,6 +126,9 @@ mod contract_registry {
             );
         }
 
+        /**
+            Get the latest `PublishedContract` for a given `contract_name`
+         */
         #[ink(message)]
         pub fn get_latest(&self, contract_name: String) -> Option<PublishedContract> {
             let info = self.info.get(&contract_name);
