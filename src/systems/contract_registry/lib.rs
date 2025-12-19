@@ -29,19 +29,18 @@ mod contract_registry {
     #[ink(storage)]
     pub struct ContractRegistry {
 
-        /*
-         * List of all contract names
+        /**
+            List of all contract names
          */
         pub contract_names: StorageVec<String>,
 
-        /*
-         * Mapping from (contract_name, version index) -> PublishedContract
+        /**
+            Maps `(contract_name, version)` to a specific version of a published contract
          */
         pub published_contract: Mapping<(String, u32), PublishedContract>,
 
-
-        /*
-         * Stores info about each registered contract name 
+        /**
+            Stores info about each registered contract name
          */
         pub info: Mapping<String, NamedContractInfo>,
     }
@@ -63,44 +62,41 @@ mod contract_registry {
         pub fn publish_latest(&mut self, contract_name: String, contract_address: Address, metadata_uri: String) {
             let caller = self.env().caller();
             let publish_block = self.env().block_number() as u64;
-
-            let (version_idx, is_new_name) = match self.info.get(&contract_name) {
-                Some(mut info) => {
-                    if info.owner != caller {
-                        panic!("publish_latest: caller is not owner for this contract_name");
-                    }
-
-                    let idx = info.version_count;
-                    info.version_count = info
-                        .version_count
-                        .checked_add(1)
-                        .expect("publish_latest: version_count overflow");
-
-                    self.info.insert(&contract_name, &info);
-                    (idx, false)
-                }
+            let mut info = match self.info.get(&contract_name) {
+                Some(info) => info,
                 None => {
                     let info = NamedContractInfo {
                         owner: caller,
-                        version_count: 1, // publishing v0 right now
+                        version_count: 0,
                     };
                     self.info.insert(&contract_name, &info);
-                    (0u32, true)
+                    self.contract_names.push(&contract_name);
+                    info
                 }
             };
 
-            if is_new_name {
-                self.contract_names.push(&contract_name);
+            // Abort if not owner
+            if info.owner != caller {
+                return;
             }
 
-            let published = PublishedContract {
+            // Increment version count
+            info.version_count = info
+                .version_count
+                .checked_add(1)
+                .expect("publish_latest: version_count overflow");
+            self.info.insert(&contract_name, &info);
+
+            // Create new PublishedContract & insert @ latest idx
+            let latest = PublishedContract {
                 publish_block,
                 address: contract_address,
                 metadata_uri,
             };
-
-            let key = (contract_name, version_idx);
-            self.published_contract.insert(&key, &published);
+            self.published_contract.insert(
+                &(contract_name, info.version_count.saturating_sub(1)),
+                &latest
+            );
         }
 
         #[ink(message)]
