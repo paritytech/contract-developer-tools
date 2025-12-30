@@ -20,7 +20,7 @@ pub struct PublishedContract {
     pub address: Address,
 
     /**
-        Bulletin chain IPFS URI pointing this contract version's metadata
+        Bulletin chain IPFS URI pointing to this contract version's metadata
      */
     pub metadata_uri: String,
 }
@@ -34,7 +34,7 @@ pub struct NamedContractInfo {
     pub owner: Address,
 
     /**
-        The number of versions published under this contract name
+        The number of versions published under this contract name.
         `version_count - 1` refers to the latest published version
      */
     pub version_count: Version,
@@ -52,7 +52,7 @@ mod contract_registry {
     pub struct ContractRegistry {
 
         /**
-            List of all existing contract names
+            List of all registered contract names, ordered by creation time
          */
         pub contract_names: StorageVec<String>,
 
@@ -96,7 +96,6 @@ mod contract_registry {
                         owner: caller,
                         version_count: 0,
                     };
-                    self.info.insert(&contract_name, &info);
                     self.contract_names.push(&contract_name);
                     info
                 }
@@ -107,7 +106,7 @@ mod contract_registry {
                 return;
             }
 
-            // Increment version count
+            // Increment version count & save info
             info.version_count = info
                 .version_count
                 .checked_add(1)
@@ -149,7 +148,7 @@ mod contract_registry {
     #[cfg(test)]
     mod tests {
         /// Imports all the definitions from the outer scope so we can use them here.
-        use super::*;
+        // use super::*;
         use contract_tools::RunningAverage;
 
         #[ink::test]
