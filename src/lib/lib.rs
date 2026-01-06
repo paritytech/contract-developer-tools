@@ -1,7 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use ink::prelude::{string::String};
-
 pub type EntityId = [u8; 32];
 pub type ContextId = [u8; 32];
 
@@ -54,49 +52,4 @@ impl RunningAverage {
             (self.sum / self.total as u64) as u8
         }
     }
-}
-
-
-/*
- * 
- */
-#[ink::storage_item(packed)]
-#[derive(Default, Clone)]
-pub struct ProductReview {
-    pub rating: u8,
-    pub comment: String,
-}
-
-/*
- * 
- */
-#[ink::storage_item(packed)]
-#[derive(Default, Clone)]
-pub struct SellerReview {
-    pub rating: u8,
-    pub comment: String,
-}
-
-/*
- * 
- */
-#[derive(Default, Clone)]
-#[cfg_attr(feature = "std", derive(Debug, PartialEq, Eq, ink::storage::traits::StorageLayout))]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
-pub struct ProductMetadata {
-    /// Ratings for this product.
-    pub average: RunningAverage
-}
-
-/*
- * Aggregated data for a seller
- */
-#[derive(Default, Clone)]
-#[cfg_attr(feature = "std", derive(Debug, PartialEq, Eq, ink::storage::traits::StorageLayout))]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
-pub struct SellerMetadata {
-    /// Direct seller reviews.
-    pub average: RunningAverage,
-    /// Per-product averages (only counting products with at least one rating).
-    pub product_average: RunningAverage,
 }
