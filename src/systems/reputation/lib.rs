@@ -1,20 +1,20 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
+/*
+* 
+*/
+#[ink::storage_item(packed)]
+#[derive(Default, Clone)]
+pub struct Review {
+    pub rating: u8,
+    pub comment_uri: String,
+}
 
 #[ink::contract]
 mod reputation {
     use ink::{storage::Mapping};
     use contract_tools::{ContextId, EntityId};
-
-    /*
-    * 
-    */
-    #[ink::storage_item(packed)]
-    #[derive(Default, Clone)]
-    pub struct Review {
-        pub rating: u8,
-        pub comment_uri: String,
-    }
+    use super::*;
 
     #[ink(storage)]
     pub struct Reputation {
