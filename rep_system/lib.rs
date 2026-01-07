@@ -1,3 +1,9 @@
+//! Core reputation system smart contract.
+//!
+//! This contract provides a generic, context-based reputation system that can be
+//! used by other contracts (like `mark3t_rep`) to store and retrieve ratings.
+//! It supports multiple rating contexts, each owned by a specific address.
+
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 #[ink::contract]
@@ -10,34 +16,50 @@ mod rep_system {
     use scale::{EncodeLike};
     use ink::storage::traits::{Packed, StorageKey};
 
-
+    /// The core reputation system contract.
+    ///
+    /// Manages rating contexts, stores ratings per transaction, and maintains
+    /// aggregated scores for entities. Each context has an owner who controls
+    /// rating submissions within that context.
     #[ink(storage)]
     pub struct RepSystem {
-                
-        // owner of a context to restrict rating submission
+        /// Maps context IDs to their owner addresses.
         pub owners: Mapping<ContextId, Address>,
+        /// Maps context IDs to lists of transaction IDs.
         pub transactions: Mapping<ContextId, Vec<TransactionId>>,
+        /// Stores individual ratings keyed by (context, transaction, entity_type).
         pub ratings_per_transaction: Mapping<TransactionKey, Rating>,
+        /// Maps entities to their associated transaction IDs.
         pub transaction_per_entity: Mapping<EntityKey, Vec<TransactionId>>,
+        /// Stores all rating values for each entity (used for score calculation).
         pub scores_per_entity: Mapping<EntityKey, Vec<u8>>,
-        pub score_cache: Mapping<EntityKey, u8>
-
+        /// Cached aggregated scores for entities.
+        pub score_cache: Mapping<EntityKey, u8>,
     }
 
     impl RepSystem {
-
+        /// Creates a new reputation system contract instance.
         #[ink(constructor)]
         pub fn new() -> Self {
             Self {
                 owners: Mapping::default(),
                 transactions: Mapping::default(),
-                ratings_per_transaction: Mapping::default(), 
+                ratings_per_transaction: Mapping::default(),
                 transaction_per_entity: Mapping::default(),
                 scores_per_entity: Mapping::default(),
-                score_cache: Mapping::default()
+                score_cache: Mapping::default(),
             }
         }
 
+        /// Retrieves all ratings for a specific entity, grouped by transaction.
+        ///
+        /// # Arguments
+        /// * `context` - The rating context ID
+        /// * `entity_id` - The entity to get ratings for
+        /// * `entity_types` - The entity types to include in each transaction's ratings
+        ///
+        /// # Returns
+        /// A vector of rating vectors, where each inner vector contains ratings for one transaction.
         #[ink(message)]
         pub fn get_ratings_for_entity(&self, context: ContextId, entity_id: EntityId, entity_types: Vec<EntityType>) -> Vec<Vec<Rating>> {
             let mut result = Vec::new();
@@ -54,6 +76,18 @@ mod rep_system {
             return result;
         }
 
+        /// Retrieves ratings for a specific transaction.
+        ///
+        /// # Arguments
+        /// * `context` - The rating context ID
+        /// * `transaction` - The transaction ID to get ratings for
+        /// * `entity_types` - The entity types to retrieve ratings for
+        ///
+        /// # Returns
+        /// A vector of ratings for the specified transaction.
+        ///
+        /// # Panics
+        /// Panics if the transaction is not found.
         #[ink(message)]
         pub fn get_ratings_for_transaction(&self, context: ContextId, transaction: TransactionId, entity_types: Vec<EntityType>) -> Vec<Rating> {
             let mut ratings = Vec::new();
@@ -70,6 +104,14 @@ mod rep_system {
             return ratings;
         }
 
+        /// Retrieves all ratings in a context, grouped by transaction.
+        ///
+        /// # Arguments
+        /// * `context` - The rating context ID
+        /// * `entity_types` - The entity types to include in each transaction's ratings
+        ///
+        /// # Returns
+        /// A vector of rating vectors, where each inner vector contains ratings for one transaction.
         #[ink(message)]
         pub fn get_ratings(&self, context: ContextId, entity_types: Vec<EntityType>) -> Vec<Vec<Rating>> { 
             let mut result = Vec::new();
@@ -88,11 +130,29 @@ mod rep_system {
             return result;
         }
 
+        /// Retrieves all transaction IDs associated with a specific entity.
+        ///
+        /// # Arguments
+        /// * `context` - The rating context ID
+        /// * `entity_id` - The entity to get transactions for
+        ///
+        /// # Returns
+        /// A vector of transaction IDs, or an empty vector if none found.
         #[ink(message)]
         pub fn get_transactions_for_entity(&self, context: ContextId, entity_id: EntityId) -> Vec<TransactionId> {
             return self.transaction_per_entity.get((context, entity_id)).unwrap_or(Vec::new());
         }
 
+        /// Registers a new rating context with the caller as owner.
+        ///
+        /// Only the owner can submit ratings within the context.
+        ///
+        /// # Arguments
+        /// * `context` - The unique context ID to register
+        ///
+        /// # Returns
+        /// * `Ok(())` - Context registered successfully
+        /// * `Err(Error::ContextAlreadyExists)` - Context ID already in use
         #[ink(message)]
         pub fn register_context(&mut self, context: ContextId) -> Result<(), Error> {
             if self.owners.contains(context) {
@@ -109,6 +169,20 @@ mod rep_system {
             return Ok(())
         }
 
+        /// Submits a new rating for an entity within a transaction.
+        ///
+        /// Only the context owner can submit ratings. Each (transaction, entity_type)
+        /// combination can only be rated once.
+        ///
+        /// # Arguments
+        /// * `context` - The rating context ID
+        /// * `rating` - The rating to submit
+        ///
+        /// # Returns
+        /// * `Ok(())` - Rating submitted successfully
+        /// * `Err(Error::NotOwner)` - Caller is not the context owner
+        /// * `Err(Error::ContextNotFound)` - Context does not exist
+        /// * `Err(Error::TransactionAlreadyRated)` - This transaction/entity_type was already rated
         #[ink(message)]
         pub fn submit_rating(&mut self, context: ContextId, rating: Rating) -> Result<(), Error> {
             self.check_owner(context)?;
@@ -141,17 +215,38 @@ mod rep_system {
             Ok(())
         }
 
+        /// Retrieves the cached aggregated score for an entity.
+        ///
+        /// # Arguments
+        /// * `context` - The rating context ID
+        /// * `entity` - The entity ID to get the score for
+        ///
+        /// # Returns
+        /// The aggregated score (0-100), or `NO_RATING` (255) if no score exists.
         #[ink(message)]
         pub fn get_score(&self, context: ContextId, entity: EntityId) -> Score {
-
             let key: EntityKey = (context, entity);
-            //println!("{:#?}", self.score_cache.get(key));
             match self.score_cache.get(key) {
                 Some(score) => return score,
                 None => return NO_RATING
             }
         }
 
+        /// Updates the aggregated score for an entity based on all submitted ratings.
+        ///
+        /// Calculates the average of all ratings for the entity and caches the result.
+        /// Only the context owner can update scores.
+        ///
+        /// # Arguments
+        /// * `context` - The rating context ID
+        /// * `entity_id` - The entity to update the score for
+        /// * `entity_type` - The type of entity (used in event emission)
+        /// * `score` - Unused (score is calculated from stored ratings)
+        ///
+        /// # Returns
+        /// * `Ok(())` - Score updated successfully
+        /// * `Err(Error::NotOwner)` - Caller is not the context owner
+        /// * `Err(Error::ContextNotFound)` - Context does not exist
         #[ink(message)]
         pub fn update_score(&mut self, context: ContextId, entity_id: EntityId, entity_type: EntityType, score: Score) -> Result<(), Error> {
             self.check_owner(context)?;
@@ -182,20 +277,35 @@ mod rep_system {
             self.score_cache.insert(key, &score);
 
             return Ok(());
-
         }
 
+        /// Verifies that the caller is the owner of the specified context.
+        ///
+        /// # Arguments
+        /// * `context` - The context ID to check ownership for
+        ///
+        /// # Returns
+        /// * `Ok(())` - Caller is the owner
+        /// * `Err(Error::NotOwner)` - Caller is not the owner
+        /// * `Err(Error::ContextNotFound)` - Context does not exist
         fn check_owner(&self, context: ContextId) -> Result<(), Error> {
             match self.owners.get(context) {
-                Some(owner) => 
+                Some(owner) =>
                     if self.env().caller() != owner {
                         return Err(Error::NotOwner);
                     } else { return Ok(()) },
                 None => return Err(Error::ContextNotFound)
             }
-
         }
 
+        /// Helper function to insert an element into a list stored in a mapping.
+        ///
+        /// If the element already exists in the list, it is not added again.
+        ///
+        /// # Arguments
+        /// * `mapping` - The mapping containing lists
+        /// * `key` - The key for the list
+        /// * `elem` - The element to insert
         fn insert_list_element_into<K: EncodeLike, E: EncodeLike + Packed + Eq, KT: StorageKey>(mapping: &mut Mapping<K, Vec<E>, KT>, key: &K, elem: E) {
             let mut list = mapping.get(key).unwrap_or_default();
             if !list.contains(&elem){
