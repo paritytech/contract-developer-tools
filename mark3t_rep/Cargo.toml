@@ -11,7 +11,7 @@ ink = { workspace = true }
 scale = { workspace = true }
 scale-info = { workspace = true }
 shared = { path = "../shared", default-features = false }
-rep_system = { path = "../rep_system", default-features = false}
+rep_system = { path = "../rep_system", default-features = false, features = ["ink-as-dependency"] }
 
 [dev-dependencies]
 ink_e2e = { workspace = true }

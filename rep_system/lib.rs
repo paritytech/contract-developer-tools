@@ -1,19 +1,26 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-/* 
+
 #[ink::contract]
 mod rep_system {
 
     use ink::prelude::vec::Vec;
-    use ink::{env::emit_event, storage::{Mapping, StorageVec}};
+    use ink::{env::emit_event, storage::{Mapping}};
     use shared::*;
 
-    type RatingKey = (ContextId, TransactionId, EntityType);
-    type ScoreKey = (ContextId, EntityId);
+    use scale::{EncodeLike};
+    use ink::storage::traits::{Packed, StorageKey};
 
 
     #[ink(storage)]
     pub struct RepSystem {
-
+                
+        // owner of a context to restrict rating submission
+        pub owners: Mapping<ContextId, Address>,
+        pub transactions: Mapping<ContextId, Vec<TransactionId>>,
+        pub ratings_per_transaction: Mapping<TransactionKey, Rating>,
+        pub transaction_per_entity: Mapping<EntityKey, Vec<TransactionId>>,
+        pub scores_per_entity: Mapping<EntityKey, Vec<u8>>,
+        pub score_cache: Mapping<EntityKey, u8>
 
     }
 
@@ -21,97 +28,228 @@ mod rep_system {
 
         #[ink(constructor)]
         pub fn new() -> Self {
+            Self {
+                owners: Mapping::default(),
+                transactions: Mapping::default(),
+                ratings_per_transaction: Mapping::default(), 
+                transaction_per_entity: Mapping::default(),
+                scores_per_entity: Mapping::default(),
+                score_cache: Mapping::default()
+            }
+        }
+
+        #[ink(message)]
+        pub fn get_ratings_for_entity(&self, context: ContextId, entity_id: EntityId, entity_types: Vec<EntityType>) -> Vec<Vec<Rating>> {
+            let mut result = Vec::new();
+            match self.transaction_per_entity.get((context, entity_id)) {
+                Some(txs) => {
+                    txs.iter().for_each(|tx| {
+                        let tx_ratings = self.get_ratings_for_transaction(context, *tx, entity_types.clone());
+                        result.push(tx_ratings);
+                    });
+                },
+                _ => () //TODO unknown entity
+            }
+
+            return result;
+        }
+
+        #[ink(message)]
+        pub fn get_ratings_for_transaction(&self, context: ContextId, transaction: TransactionId, entity_types: Vec<EntityType>) -> Vec<Rating> {
+            let mut ratings = Vec::new();
+            entity_types.iter().for_each(|et| {
+                let key = (context, transaction, et);
+                match self.ratings_per_transaction.get(key) {
+                    Some(r) => ratings.push(r),
+                    _ => panic!("transaction not found")
+
+                }
+                
+            });
+            
+            return ratings;
+        }
+
+        #[ink(message)]
+        pub fn get_ratings(&self, context: ContextId, entity_types: Vec<EntityType>) -> Vec<Vec<Rating>> { 
+            let mut result = Vec::new();
+            match self.transactions.get(context) {
+                Some(txs) => {
+                    txs.iter().copied().for_each(|tx| { 
+                        let ratings = self.get_ratings_for_transaction(context, tx, entity_types.clone());
+                        result.push(ratings);
+                    });
+                },
+                _ => {
+                    
+                }
+                
+            }
+            return result;
+        }
+
+        #[ink(message)]
+        pub fn get_transactions_for_entity(&self, context: ContextId, entity_id: EntityId) -> Vec<TransactionId> {
+            return self.transaction_per_entity.get((context, entity_id)).unwrap_or(Vec::new());
+        }
+
+        #[ink(message)]
+        pub fn register_context(&mut self, context: ContextId) -> Result<(), Error> {
+            if self.owners.contains(context) {
+                return Err(Error::ContextAlreadyExists)
+            }
+            let owner = self.env().caller();
+            self.owners.insert(context, &owner);
+
+            emit_event(ContextCreated {
+                context: context,
+                owner: owner,
+                time: self.env().block_timestamp()
+            });
+            return Ok(())
+        }
+
+        #[ink(message)]
+        pub fn submit_rating(&mut self, context: ContextId, rating: Rating) -> Result<(), Error> {
+            self.check_owner(context)?;
+
+            let tx_key: TransactionKey = (context, rating.transaction_id, rating.entity_type);
+            if self.ratings_per_transaction.contains(tx_key) {
+                return Err(Error::TransactionAlreadyRated);
+            }
+
+            RepSystem::insert_list_element_into(&mut self.transactions, &context, rating.transaction_id);
+
+            self.ratings_per_transaction.insert(tx_key, &rating); 
+            
+            let entity_key: EntityKey = (context, rating.entity_id);
+            RepSystem::insert_list_element_into(&mut self.transaction_per_entity, &entity_key, rating.transaction_id);
+            //println!("Before Insert {:?}", self.scores_per_entity.get(score_key));
+            RepSystem::insert_list_element_into(&mut self.scores_per_entity, &entity_key, rating.rating);
+            //println!("After Insert {:?}", self.scores_per_entity.get(score_key));
+
+            emit_event(RatingSubmitted { 
+                context: context, 
+                entity_type: rating.entity_type, 
+                user: rating.rater,
+                timestamp: rating.timestamp,
+                entity_id: rating.entity_id, 
+                rating: rating.rating, 
+                remark: rating.remark }
+            );
+
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn get_score(&self, context: ContextId, entity: EntityId) -> Score {
+
+            let key: EntityKey = (context, entity);
+            //println!("{:#?}", self.score_cache.get(key));
+            match self.score_cache.get(key) {
+                Some(score) => return score,
+                None => return NO_RATING
+            }
+        }
+
+        #[ink(message)]
+        pub fn update_score(&mut self, context: ContextId, entity_id: EntityId, entity_type: EntityType, score: Score) -> Result<(), Error> {
+            self.check_owner(context)?;
+
+            let key: EntityKey = (context, entity_id);
+
+            // TODO delegate to calculator in general
+            // TODO implement score aggregation for shipping and article
+            let score: Score = match self.scores_per_entity.get(key) {
+                Some(scores) => {
+                    let sum: u32 = scores.iter().map(|&x| x as u32).sum();
+                    let avg: u32 = sum / scores.len() as u32;
+                    avg as Score  
+                },
+                None => {
+                    panic!("Should not happen") // if called correctly after submission
+                }
+            };
+
+            emit_event(ScoreUpdated {
+                context: context,
+                entity_id: entity_id,
+                timestamp: self.env().block_timestamp(),
+                entity_type: entity_type,
+                score: score
+            });
+
+            self.score_cache.insert(key, &score);
+
+            return Ok(());
 
         }
 
+        fn check_owner(&self, context: ContextId) -> Result<(), Error> {
+            match self.owners.get(context) {
+                Some(owner) => 
+                    if self.env().caller() != owner {
+                        return Err(Error::NotOwner);
+                    } else { return Ok(()) },
+                None => return Err(Error::ContextNotFound)
+            }
 
+        }
 
+        fn insert_list_element_into<K: EncodeLike, E: EncodeLike + Packed + Eq, KT: StorageKey>(mapping: &mut Mapping<K, Vec<E>, KT>, key: &K, elem: E) {
+            let mut list = mapping.get(key).unwrap_or_default();
+            if !list.contains(&elem){
+                list.push(elem);
+            }
+            mapping.insert(key, &list);
 
+        }
     }
-
 
 
     #[cfg(test)]
     mod tests {
-        use ink::{Address, env::address};
 
-        /// Imports all the definitions from the outer scope so we can use them here.
         use super::*;
-
-        /**
-         * Sample dummy test
-         */
+        use shared::{EntityType, Person};
+        const CTX: ContextId = 1;
+        const RATER1: Person = 2;
+        const E_ID1: EntityId = 42;
+        const E_ID2: EntityId = 43;
+        const E_TYPE1: EntityType = 69;
+   
         #[ink::test]
-        fn it_works() {
+        fn submit_rating() {
             let mut rep_system = RepSystem::new();
-            let ctx = 1;
-            let ent_id = [42; 32];
-            //let owner = Address::from([2; 20]);
-            assert_eq!(rep_system.get_score(ctx, ent_id), NO_RATING); 
-            rep_system.register_context(ctx);
-            assert_eq!(rep_system.get_score(ctx, ent_id), NO_RATING);
-
-        }
-    }
-
-
-    /// This is how you'd write end-to-end (E2E) or integration tests for ink! contracts.
-    ///
-    /// When running these you need to make sure that you:
-    /// - Compile the tests with the `e2e-tests` feature flag enabled (`--features e2e-tests`)
-    /// - Are running a Substrate node which contains `pallet-contracts` in the background
-    #[cfg(all(test, feature = "e2e-tests"))]
-    mod e2e_tests {
-        /// Imports all the definitions from the outer scope so we can use them here.
-        use super::*;
-
-        /// A helper function used for calling contract messages.
-        use ink_e2e::ContractsBackend;
-
-        /// The End-to-End test `Result` type.
-        type E2EResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
-
-        /// We test that we can read and write a value from the on-chain contract.
-        #[ink_e2e::test]
-        async fn it_works(mut client: ink_e2e::Client<C, E>) -> E2EResult<()> {
-
-            println!("E2E Test!!!!!!!!!!!!!!!!!");
-            // Given
-            let mut constructor = RepSystemRef::new();
-            let contract = client
-                .instantiate("rep_system", &ink_e2e::bob(), &mut constructor)
-                .submit()
-                .await
-                .expect("instantiate failed");
-            let mut call_builder = contract.call_builder::<RepSystem>();
-
-            let ctx: u64 = 1;
-            /*
-             
-            let get = call_builder.register_context(ctx);
-            let get_result = client.call(&ink_e2e::bob(), &get).dry_run().await?;
-            assert!(matches!(get_result.return_value(), false));
-            */
-
-            // When
-            let flip = call_builder.get_score(ctx, [1; 32]);
-            let _flip_result = client
-                .call(&ink_e2e::bob(), &flip)
-                .submit()
-                .await
-                .expect("flip failed");
-
-            // Then
             
-            let get = call_builder.get_score(ctx, [1; 32]);
-            let get_result = client.call(&ink_e2e::bob(), &get).dry_run().await?;
-            assert!(matches!(get_result.return_value(), 0));
+            let _ = rep_system.register_context(CTX);
+            let ent_id: EntityId = 42;
+            //let owner = Address::from([2; 20]);
+            assert_eq!(NO_RATING, rep_system.get_score(CTX, ent_id)); 
 
-            Ok(())
+            assert_eq!(Vec::<Vec<Rating>>::with_capacity(0), rep_system.get_ratings(CTX, [1,2,3].to_vec()));
+
+            let r1 = Rating { transaction_id: 1, rater: RATER1, entity_id: E_ID1, entity_type: E_TYPE1, timestamp: 123, rating: 30, remark: None };
+            let r2 = Rating { transaction_id: 2, rater: RATER1, entity_id: E_ID2, entity_type: E_TYPE1, timestamp: 234, rating: 60, remark: None };
+            let r3 = Rating { transaction_id: 3, rater: RATER1, entity_id: E_ID2, entity_type: E_TYPE1, timestamp: 345, rating: 90, remark: None };
+            submit(&mut rep_system, r1.clone());
+            submit(&mut rep_system, r2.clone());
+            submit(&mut rep_system, r3.clone());
+            
+            assert_eq!(vec![vec![r1], vec![r2], vec![r3]], rep_system.get_ratings(CTX, vec![E_TYPE1]));
+
+            assert_eq!(rep_system.get_score(CTX, ent_id), NO_RATING);
+
+        }
+
+
+        fn submit(rep_system: &mut RepSystem, rating: Rating) {
+            let submit_res = rep_system.submit_rating(CTX, rating.clone());
+            assert_eq!(Ok(()), submit_res, "Error submitting rating");
         }
     }
+
 }
 
 pub use self::rep_system::RepSystem;
 
-*/

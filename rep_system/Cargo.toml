@@ -1,6 +1,7 @@
 [package]
 name = "rep_system"
 edition = "2024"
+authors = ["Parity Technologies"]
 #version.workspace = true
 #authors.workspace = true
 #edition.workspace = true
