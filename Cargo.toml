@@ -2,7 +2,8 @@
 resolver = "2"
 members = [
     "src/lib",
-    "src/systems/*"
+    "src/systems/*",
+    "examples/*/contract",
 ]
 
 [workspace.dependencies]

@@ -1,0 +1,30 @@
+[package]
+name = "reputation_context_owner"
+version = "0.1.0"
+edition = "2024"
+authors = ["Parity Technologies"]
+
+[dependencies]
+ink = { version = "6.0.0-beta.1", default-features = false, features = ["unstable-hostfn"] }
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+scale-info = { version = "2.6", default-features = false, features = ["derive"] }
+
+# Third-party usage example: depend on the storage layer via git or crates.io.
+reputation = { git = "https://github.com/paritytech/contract-developer-tools.git", branch = "charles/dev", default-features = false, features = ["ink-as-dependency"] }
+contract_tools = { git = "https://github.com/paritytech/contract-developer-tools.git", branch = "charles/dev", default-features = false }
+
+[lib]
+path = "lib.rs"
+
+[features]
+default = ["std"]
+std = [
+    "ink/std",
+    "scale/std",
+    "scale-info/std",
+    "reputation/std",
+    "contract_tools/std",
+]
+
+[package.metadata.ink-lang]
+abi = "ink"
