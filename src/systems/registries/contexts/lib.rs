@@ -1,11 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::{Address, env::call::FromAddr};
-
-pub fn context_registry() -> ContextRegistryRef {
-    ContextRegistryRef::from_addr(Address::zero())
-}
-
 #[ink::contract]
 mod context_registry {
     use ink::storage::Mapping;

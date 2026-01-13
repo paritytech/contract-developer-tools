@@ -1,4 +1,4 @@
-#![cfg_attr(not(feature = "std"), no_std, no_main)]
+#![cfg_attr(not(feature = "std"), no_std)]
 
-pub mod contexts;
-pub mod contracts;
+pub use contexts;
+pub use contracts;

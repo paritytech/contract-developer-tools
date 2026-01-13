@@ -2,7 +2,7 @@
 
 use ink::Address;
 use ink::env::BlockNumber;
-use ink::prelude::{string::String};
+use ink::prelude::string::String;
 
 pub type Version = u32;
 
@@ -43,8 +43,8 @@ pub struct NamedContractInfo {
 #[ink::contract]
 mod contract_registry {
     use ink::storage::StorageVec;
-    use ink::{storage::Mapping};
-    use ink::prelude::{string::String};
+    use ink::storage::Mapping;
+    use ink::prelude::string::String;
     use super::{NamedContractInfo, PublishedContract, Version};
 
     #[ink(storage)]
@@ -70,7 +70,7 @@ mod contract_registry {
     impl ContractRegistry {
         #[ink(constructor)]
         pub fn new() -> Self {
-            Self { 
+            Self {
                 published_contract: Mapping::default(),
                 info: Mapping::default(),
                 contract_names: StorageVec::new(),

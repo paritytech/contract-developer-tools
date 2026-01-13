@@ -1,0 +1,37 @@
+[package]
+name = "systems"
+version = "0.1.0"
+edition = "2024"
+authors = ["Parity Technologies"]
+description = "Re-exports all system contracts for easy external usage"
+
+[dependencies]
+ink = { workspace = true }
+scale = { workspace = true }
+scale-info = { workspace = true }
+contract_tools = { path = "../lib", default-features = false }
+
+# System contracts
+registries = { path = "registries", default-features = false }
+reputation = { path = "reputation", default-features = false }
+disputes = { path = "disputes", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+    "ink/std",
+    "scale/std",
+    "scale-info/std",
+    "contract_tools/std",
+    "registries/std",
+    "reputation/std",
+    "disputes/std",
+]
+ink-as-dependency = [
+    "registries/ink-as-dependency",
+    "reputation/ink-as-dependency",
+    "disputes/ink-as-dependency",
+]
+
+[lib]
+path = "lib.rs"

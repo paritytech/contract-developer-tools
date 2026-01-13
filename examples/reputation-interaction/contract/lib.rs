@@ -2,9 +2,10 @@
 
 #[ink::contract]
 mod reputation_context_owner {
-    use contract_tools::{ContextId, EntityId};
     use ink::{env::call::FromAddr, prelude::string::String};
-    use reputation::{ReputationRef, Review};
+    use contract_tools::{ContextId, EntityId};
+    use systems::registries::contexts::ContextRegistryRef;
+    use systems::reputation::{ReputationRef, Review};
 
     #[ink(storage)]
     pub struct ReputationContextOwner {
@@ -14,13 +15,17 @@ mod reputation_context_owner {
 
     impl ReputationContextOwner {
         #[ink(constructor)]
-        pub fn new(reputation_ptr: Address, context_id: ContextId) -> Self {
-            let mut reputation_contract = ReputationRef::from_addr(reputation_ptr);
-            // Register this contract as the context owner inside the storage layer.
-            reputation_contract.register_context(context_id);
+        pub fn new(
+            context_registry_ptr: Address,
+            reputation_ptr: Address,
+            context_id: ContextId,
+        ) -> Self {
+            // Register this contract as the context owner in the shared context registry.
+            let mut context_registry = ContextRegistryRef::from_addr(context_registry_ptr);
+            context_registry.register_context(context_id);
 
             Self {
-                reputation: reputation_contract,
+                reputation: ReputationRef::from_addr(reputation_ptr),
                 context_id,
             }
         }
