@@ -1,5 +1,5 @@
 [package]
-name = "reputation"
+name = "registries"
 version = "0.1.0"
 edition = "2024"
 authors = ["Parity Technologies"]
@@ -9,7 +9,6 @@ ink = { workspace = true }
 scale = { workspace = true }
 scale-info = { workspace = true }
 contract_tools = { path = "../../lib", default-features = false }
-registries = { path = "../registries", default-features = false, features = ["ink-as-dependency"] }
 
 [dev-dependencies]
 ink_e2e = { workspace = true }
@@ -24,7 +23,6 @@ std = [
     "scale/std",
     "scale-info/std",
     "contract_tools/std",
-    "registries/std",
 ]
 ink-as-dependency = []
 e2e-tests = []

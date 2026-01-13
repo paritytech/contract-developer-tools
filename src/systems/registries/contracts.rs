@@ -45,8 +45,7 @@ mod contract_registry {
     use ink::storage::StorageVec;
     use ink::{storage::Mapping};
     use ink::prelude::{string::String};
-
-    use crate::{NamedContractInfo, PublishedContract, Version};
+    use super::{NamedContractInfo, PublishedContract, Version};
 
     #[ink(storage)]
     pub struct ContractRegistry {
