@@ -3,7 +3,7 @@
 /**
     A universally unique identifier (UUID) represented as a 64-byte array.
 */
-pub type UUID = [u8; 64];
+pub type UUID = [u8; 32];
 
 /**
     Identifier for any  unique *thing* in the system (e.g., user, contract, organization, receipt)
