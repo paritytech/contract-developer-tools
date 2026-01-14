@@ -1,0 +1,14 @@
+[package]
+name = "addresses"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ink = { workspace = true }
+
+[lib]
+path = "lib.rs"
+
+[features]
+default = ["std"]
+std = ["ink/std"]

@@ -15,7 +15,7 @@ mod reputation {
     use ink::storage::Mapping;
     use ink::env::call::FromAddr;
     use contract_tools::{ContextId, EntityId};
-    use registries::{contexts};
+    use registries::contexts::ContextRegistryRef;
     use super::*;
 
     #[ink(storage)]
@@ -23,7 +23,7 @@ mod reputation {
         /*
          * Reference to the deployed context registry contract
          */
-        pub context_registry: contexts::ContextRegistryRef,
+        pub context_registry: ContextRegistryRef,
 
         /*
          * Store all reviews across all contexts, where the `Address`
@@ -34,9 +34,9 @@ mod reputation {
 
     impl Reputation {
         #[ink(constructor)]
-        pub fn new(context_registry: Address) -> Self {
+        pub fn new() -> Self {
             Self {
-                context_registry: contexts::ContextRegistryRef::from_addr(context_registry),
+                context_registry: ContextRegistryRef::from_addr(addresses::CONTEXT_REGISTRY),
                 reviews: Mapping::default(),
             }
         }

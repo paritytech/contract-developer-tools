@@ -79,7 +79,29 @@ systems = { git = "...", default-features = false, features = ["ink-as-dependenc
 contract_tools = { git = "...", default-features = false }
 ```
 
-Then access contracts via:
+**Using CONTRACTS (recommended):** Pre-configured references with placeholder addresses that CI/deployment replaces:
+
+```rust
+use systems::CONTRACTS;
+
+pub fn new(context_id: ContextId) -> Self {
+    let mut context_registry = CONTRACTS::registries::contexts();
+    context_registry.register_context(context_id);
+
+    Self {
+        reputation: CONTRACTS::reputation(),
+        context_id,
+    }
+}
+```
+
+Available via CONTRACTS:
+- `CONTRACTS::registries::contexts()` → ContextRegistryRef
+- `CONTRACTS::registries::contracts()` → ContractRegistryRef
+- `CONTRACTS::reputation()` → ReputationRef
+- `CONTRACTS::disputes()` → DisputesRef
+
+**Manual references:** For explicit address passing:
 - `systems::registries::contexts::ContextRegistryRef`
 - `systems::registries::contracts::ContractRegistryRef`
 - `systems::reputation::ReputationRef`

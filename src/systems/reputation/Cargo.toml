@@ -9,6 +9,7 @@ ink = { workspace = true }
 scale = { workspace = true }
 scale-info = { workspace = true }
 contract_tools = { path = "../../lib", default-features = false }
+addresses = { path = "../addresses", default-features = false }
 registries = { path = "../registries", default-features = false, features = ["ink-as-dependency"] }
 
 [dev-dependencies]
@@ -24,6 +25,7 @@ std = [
     "scale/std",
     "scale-info/std",
     "contract_tools/std",
+    "addresses/std",
     "registries/std",
 ]
 ink-as-dependency = []
