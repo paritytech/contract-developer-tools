@@ -1,7 +1,19 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub type EntityId = [u8; 32];
-pub type ContextId = [u8; 32];
+/**
+    A universally unique identifier (UUID) represented as a 64-byte array.
+*/
+pub type UUID = [u8; 64];
+
+/**
+    Identifier for any  unique *thing* in the system (e.g., user, contract, organization, receipt)
+ */
+pub type EntityId = UUID;
+
+/**
+    Identifier for a unique context which is owned & controlled by an `address`.
+ */
+pub type ContextId = UUID;
 
 #[derive(Default, Clone)]
 #[cfg_attr(feature = "std", derive(Debug, PartialEq, Eq, ink::storage::traits::StorageLayout))]
