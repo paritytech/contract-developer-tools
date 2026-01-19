@@ -1,0 +1,21 @@
+{
+  "name": "system-basic-ui",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@polkadot-api/descriptors": "file:.papi/descriptors",
+    "@polkadot-api/sdk-ink": "^0.6.2",
+    "@polkadot/api": "^16.5.4",
+    "@polkadot/util-crypto": "^14.0.1",
+    "polkadot-api": "^1.23.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
+}

@@ -1,0 +1,39 @@
+[package]
+name = "item_tracker"
+version = "0.1.0"
+edition = "2021"
+authors = ["Example"]
+
+[dependencies]
+ink = { workspace = true }
+scale = { workspace = true }
+scale-info = { workspace = true }
+contract_tools = { path = "../../../src/lib", default-features = false }
+systems = { path = "../../../src/systems", default-features = false, features = ["ink-as-dependency"] }
+
+[dev-dependencies]
+ink_e2e = { workspace = true }
+
+[lib]
+path = "lib.rs"
+
+[features]
+default = ["std"]
+std = [
+    "ink/std",
+    "scale/std",
+    "scale-info/std",
+    "contract_tools/std",
+    "systems/std",
+]
+ink-as-dependency = []
+e2e-tests = []
+
+[package.metadata.ink-lang]
+abi = "ink"
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    'cfg(ink_abi, values("ink", "sol", "all"))'
+]
