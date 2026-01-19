@@ -54,6 +54,12 @@ bun src/view.ts       # view contract storage
 
 Disputes have statuses: `Open`, `Resolved`, `Dismissed`.
 
+**entity_graph** - Stores parent-child relationships (edges) between entities. References the shared context registry for ownership checks. Context owners can:
+- `add_edge` - Create an edge from parent to child entity with optional metadata URI
+- `remove_edge` - Delete an edge between two entities
+- `has_edge` - Check if an edge exists
+- `get_edge` - Get edge details including metadata
+
 ### Context Architecture
 
 ```
@@ -101,6 +107,7 @@ Available via systems:
 - `systems::registries::contracts()` → ContractRegistryRef
 - `systems::reputation()` → ReputationRef
 - `systems::disputes()` → DisputesRef
+- `systems::entity_graph()` → EntityGraphRef
 
 **Core types at root level:**
 - `dapps::EntityId` - Identifier for any unique entity
@@ -117,6 +124,7 @@ use dapps::math::RunningAverage;
 - `dapps::registries::contracts::ContractRegistryRef`
 - `dapps::reputation::ReputationRef`
 - `dapps::disputes::DisputesRef`
+- `dapps::entity_graph::EntityGraphRef`
 
 See `examples/market-api/contract/` for a complete example.
 

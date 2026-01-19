@@ -11,6 +11,7 @@ members = [
     "src/systems/registries/contracts",
     "src/systems/reputation",
     "src/systems/disputes",
+    "src/systems/entity_graph",
     "examples/*/contract",
 ]
 

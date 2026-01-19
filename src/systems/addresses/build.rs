@@ -52,6 +52,7 @@ fn main() {
         "CONTRACT_REGISTRY",
         "REPUTATION",
         "DISPUTES",
+        "ENTITY_GRAPH",
     ] {
         let bytes = addresses.get(*name).copied().unwrap_or([0u8; 20]);
         // Use transmute for const construction since Address::from isn't const

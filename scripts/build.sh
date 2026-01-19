@@ -3,6 +3,7 @@
 (cd src/systems/registries/contracts && cargo contract build)
 (cd src/systems/reputation && cargo contract build)
 (cd src/systems/disputes && cargo contract build)
+(cd src/systems/entity_graph && cargo contract build)
 
 cd examples/market-api
 pnpm papi ink add ../../target/ink/contexts/contexts.contract

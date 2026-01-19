@@ -13,8 +13,9 @@ pub mod systems {
     pub use ::systems::systems::*;
 }
 
-// Also expose raw contract modules for type access (crates with types like Review, Dispute, etc.)
+// Also expose raw contract modules for type access (crates with types like Review, Dispute, Edge, etc.)
 // Use absolute paths since we have a local `systems` module above
 pub use ::systems::disputes;
+pub use ::systems::entity_graph;
 pub use ::systems::registries;
 pub use ::systems::reputation;

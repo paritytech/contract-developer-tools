@@ -2,6 +2,7 @@
 
 pub use addresses;
 pub use disputes;
+pub use entity_graph;
 pub use registries;
 pub use reputation;
 
@@ -33,5 +34,9 @@ pub mod systems {
 
     pub fn disputes() -> crate::disputes::DisputesRef {
         crate::disputes::DisputesRef::from_addr(crate::addresses::DISPUTES)
+    }
+
+    pub fn entity_graph() -> crate::entity_graph::EntityGraphRef {
+        crate::entity_graph::EntityGraphRef::from_addr(crate::addresses::ENTITY_GRAPH)
     }
 }

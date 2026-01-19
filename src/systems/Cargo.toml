@@ -16,6 +16,7 @@ addresses = { path = "addresses", default-features = false }
 registries = { path = "registries", default-features = false }
 reputation = { path = "reputation", default-features = false }
 disputes = { path = "disputes", default-features = false }
+entity_graph = { path = "entity_graph", default-features = false }
 
 [features]
 default = ["std"]
@@ -28,11 +29,13 @@ std = [
     "registries/std",
     "reputation/std",
     "disputes/std",
+    "entity_graph/std",
 ]
 ink-as-dependency = [
     "registries/ink-as-dependency",
     "reputation/ink-as-dependency",
     "disputes/ink-as-dependency",
+    "entity_graph/ink-as-dependency",
 ]
 
 [lib]

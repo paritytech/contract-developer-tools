@@ -3,8 +3,10 @@
 #[ink::contract]
 mod market_api {
     use dapps::{
-        ContextId, EntityId, math,
+        ContextId, EntityId,
         disputes::{Dispute, DisputesRef},
+        entity_graph::EntityGraphRef,
+        math,
         reputation::{ReputationRef, Review},
         systems,
     };
@@ -14,6 +16,7 @@ mod market_api {
     pub struct MarketApi {
         context_id: ContextId,
         reputation: ReputationRef,
+        relationships: EntityGraphRef,
         disputes: DisputesRef,
     }
 
@@ -26,6 +29,7 @@ mod market_api {
             Self {
                 reputation: systems::reputation(),
                 disputes: systems::disputes(),
+                relationships: systems::entity_graph(),
                 context_id,
             }
         }
