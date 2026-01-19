@@ -15,10 +15,10 @@ pub struct Item {
 #[ink::contract]
 mod item_tracker {
     use super::*;
-    use contract_tools::ContextId;
+    use dapps::ContextId;
+    use dapps::registries::contexts::ContextRegistryRef;
+    use dapps::systems;
     use ink::storage::Mapping;
-    use systems::registries::contexts::ContextRegistryRef;
-    use systems::CONTRACTS;
 
     #[ink(storage)]
     pub struct ItemTracker {
@@ -52,7 +52,7 @@ mod item_tracker {
         #[ink(constructor)]
         pub fn new(context_id: ContextId) -> Self {
             // Register ourselves as context owner
-            let mut context_registry = CONTRACTS::registries::contexts();
+            let mut context_registry = systems::registries::contexts();
             context_registry.register_context(context_id);
 
             Self {

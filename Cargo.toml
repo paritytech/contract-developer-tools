@@ -1,8 +1,16 @@
 [workspace]
 resolver = "2"
 members = [
-    "src/lib",
-    "src/systems/*",
+    "src",
+    "src/core",
+    "src/core/math",
+    "src/systems",
+    "src/systems/addresses",
+    "src/systems/registries",
+    "src/systems/registries/contexts",
+    "src/systems/registries/contracts",
+    "src/systems/reputation",
+    "src/systems/disputes",
     "examples/*/contract",
 ]
 

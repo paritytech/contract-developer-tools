@@ -8,7 +8,7 @@ authors = ["Parity Technologies"]
 ink = { workspace = true }
 scale = { workspace = true }
 scale-info = { workspace = true }
-contract_tools = { path = "../../lib", default-features = false }
+dapps_core = { path = "../../core", default-features = false }
 addresses = { path = "../addresses", default-features = false }
 registries = { path = "../registries", default-features = false, features = ["ink-as-dependency"] }
 
@@ -24,7 +24,7 @@ std = [
     "ink/std",
     "scale/std",
     "scale-info/std",
-    "contract_tools/std",
+    "dapps_core/std",
     "addresses/std",
     "registries/std",
 ]

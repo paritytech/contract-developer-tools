@@ -1,0 +1,19 @@
+[package]
+name = "dapps"
+version = "0.1.0"
+edition = "2024"
+authors = ["Parity Technologies"]
+description = "On-chain systems and utilities for Polkadot/Substrate"
+
+[dependencies]
+ink = { workspace = true }
+dapps_core = { path = "core", default-features = false }
+systems = { path = "systems", default-features = false }
+
+[features]
+default = ["std"]
+std = ["ink/std", "dapps_core/std", "systems/std"]
+ink-as-dependency = ["systems/ink-as-dependency"]
+
+[lib]
+path = "lib.rs"

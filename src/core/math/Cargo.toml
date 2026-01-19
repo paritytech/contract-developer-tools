@@ -1,11 +1,8 @@
 [package]
-name = "contract_tools"
+name = "math"
 version = "0.1.0"
 edition = "2024"
 authors = ["Parity Technologies"]
-
-[lib]
-path = "lib.rs"
 
 [dependencies]
 ink = { workspace = true }
@@ -14,8 +11,7 @@ scale-info = { workspace = true, optional = true }
 
 [features]
 default = ["std"]
-std = [
-    "ink/std",
-    "scale/std",
-    "scale-info/std",
-]
+std = ["ink/std", "scale/std", "scale-info/std"]
+
+[lib]
+path = "lib.rs"

@@ -12,7 +12,7 @@ pub struct Review {
 #[ink::contract]
 mod reputation {
     use super::*;
-    use contract_tools::{ContextId, EntityId};
+    use dapps_core::{ContextId, EntityId};
     use ink::env::call::FromAddr;
     use ink::storage::Mapping;
     use registries::contexts::ContextRegistryRef;

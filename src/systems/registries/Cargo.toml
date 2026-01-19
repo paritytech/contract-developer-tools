@@ -9,7 +9,7 @@ description = "Re-exports registry contracts (contexts, contracts)"
 ink = { workspace = true }
 scale = { workspace = true }
 scale-info = { workspace = true }
-contract_tools = { path = "../../lib", default-features = false }
+dapps_core = { path = "../../core", default-features = false }
 
 # Sub-crates
 contexts = { path = "contexts", default-features = false }
@@ -24,7 +24,7 @@ std = [
     "ink/std",
     "scale/std",
     "scale-info/std",
-    "contract_tools/std",
+    "dapps_core/std",
     "contexts/std",
     "contracts/std",
 ]

@@ -1,0 +1,15 @@
+[package]
+name = "dapps_core"
+version = "0.1.0"
+edition = "2024"
+authors = ["Parity Technologies"]
+
+[dependencies]
+math = { path = "math", default-features = false }
+
+[features]
+default = ["std"]
+std = ["math/std"]
+
+[lib]
+path = "lib.rs"

@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use contract_tools::EntityId;
+use dapps_core::EntityId;
 use ink::{Address, prelude::string::String};
 
 #[derive(Default, Clone, Copy, PartialEq, Eq)]
@@ -27,7 +27,7 @@ pub struct Dispute {
 #[ink::contract]
 mod disputes {
     use super::*;
-    use contract_tools::{ContextId, EntityId};
+    use dapps_core::{ContextId, EntityId};
     use ink::env::call::FromAddr;
     use ink::storage::Mapping;
     use registries::contexts::ContextRegistryRef;

@@ -2,7 +2,7 @@
 
 #[ink::contract]
 mod context_registry {
-    use contract_tools::ContextId;
+    use dapps_core::ContextId;
     use ink::storage::Mapping;
 
     #[ink(storage)]

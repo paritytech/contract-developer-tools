@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Rust/ink! smart contract workspace for Polkadot/Substrate chains. It provides reusable on-chain systems (contracts) and a shared library, with TypeScript tooling for chain interaction.
+This is a Rust/ink! smart contract workspace for Polkadot/Substrate chains. It provides reusable on-chain systems (contracts) and shared utilities via the `dapps` crate, with TypeScript tooling for chain interaction.
 
 ## Commands
 
@@ -29,12 +29,14 @@ bun src/view.ts       # view contract storage
 ## Architecture
 
 ### Workspace Structure
-- `src/lib/` - Shared library (`contract_tools`) with common types (`EntityId`, `ContextId`) and utilities (`RunningAverage`)
-- `src/systems/` - Re-exports all system contracts via the `systems` crate
-  - `registries/contexts/` - Context registry contract
-  - `registries/contracts/` - Contract registry contract
-  - `reputation/` - Reputation contract
-  - `disputes/` - Disputes contract
+- `src/` - Main `dapps` crate that re-exports everything
+  - `core/` - Core types (`EntityId`, `ContextId`, `UUID`) and utilities
+    - `math/` - Math utilities (`RunningAverage`)
+  - `systems/` - System contracts
+    - `registries/contexts/` - Context registry contract
+    - `registries/contracts/` - Contract registry contract
+    - `reputation/` - Reputation contract
+    - `disputes/` - Disputes contract
 - `examples/*/contract/` - Example contracts demonstrating system usage
 
 ### System Contracts
@@ -72,40 +74,49 @@ Both reputation and disputes contracts take a `context_registry` address in thei
 
 ### Integration Pattern
 
-External contracts can depend on the `systems` crate with `ink-as-dependency` feature:
+External contracts depend on the single `dapps` crate with `ink-as-dependency` feature:
 
 ```toml
-systems = { git = "...", default-features = false, features = ["ink-as-dependency"] }
-contract_tools = { git = "...", default-features = false }
+dapps = { git = "...", default-features = false, features = ["ink-as-dependency"] }
 ```
 
-**Using CONTRACTS (recommended):** Pre-configured references with placeholder addresses that CI/deployment replaces:
+**Using systems (recommended):** Pre-configured references with placeholder addresses that CI/deployment replaces:
 
 ```rust
-use systems::CONTRACTS;
+use dapps::{ContextId, systems};
 
 pub fn new(context_id: ContextId) -> Self {
-    let mut context_registry = CONTRACTS::registries::contexts();
+    let mut context_registry = systems::registries::contexts();
     context_registry.register_context(context_id);
 
     Self {
-        reputation: CONTRACTS::reputation(),
+        reputation: systems::reputation(),
         context_id,
     }
 }
 ```
 
-Available via CONTRACTS:
-- `CONTRACTS::registries::contexts()` → ContextRegistryRef
-- `CONTRACTS::registries::contracts()` → ContractRegistryRef
-- `CONTRACTS::reputation()` → ReputationRef
-- `CONTRACTS::disputes()` → DisputesRef
+Available via systems:
+- `systems::registries::contexts()` → ContextRegistryRef
+- `systems::registries::contracts()` → ContractRegistryRef
+- `systems::reputation()` → ReputationRef
+- `systems::disputes()` → DisputesRef
 
-**Manual references:** For explicit address passing:
-- `systems::registries::contexts::ContextRegistryRef`
-- `systems::registries::contracts::ContractRegistryRef`
-- `systems::reputation::ReputationRef`
-- `systems::disputes::DisputesRef`
+**Core types at root level:**
+- `dapps::EntityId` - Identifier for any unique entity
+- `dapps::ContextId` - Identifier for a context owned by an address
+- `dapps::UUID` - 32-byte unique identifier
+
+**Math utilities:**
+```rust
+use dapps::math::RunningAverage;
+```
+
+**Manual references:** For explicit type access:
+- `dapps::registries::contexts::ContextRegistryRef`
+- `dapps::registries::contracts::ContractRegistryRef`
+- `dapps::reputation::ReputationRef`
+- `dapps::disputes::DisputesRef`
 
 See `examples/reputation-interaction/contract/` for a complete example.
 

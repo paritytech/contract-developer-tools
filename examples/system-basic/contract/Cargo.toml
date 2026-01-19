@@ -8,8 +8,7 @@ authors = ["Example"]
 ink = { workspace = true }
 scale = { workspace = true }
 scale-info = { workspace = true }
-contract_tools = { path = "../../../src/lib", default-features = false }
-systems = { path = "../../../src/systems", default-features = false, features = ["ink-as-dependency"] }
+dapps = { path = "../../../src", default-features = false, features = ["ink-as-dependency"] }
 
 [dev-dependencies]
 ink_e2e = { workspace = true }
@@ -23,8 +22,7 @@ std = [
     "ink/std",
     "scale/std",
     "scale-info/std",
-    "contract_tools/std",
-    "systems/std",
+    "dapps/std",
 ]
 ink-as-dependency = []
 e2e-tests = []

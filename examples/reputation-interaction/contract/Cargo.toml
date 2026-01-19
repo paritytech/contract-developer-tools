@@ -9,13 +9,10 @@ ink = { version = "6.0.0-beta.1", default-features = false, features = ["unstabl
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2.6", default-features = false, features = ["derive"] }
 
-# Third-party usage example: depend on systems and contract_tools via git or crates.io.
-# For development, use local paths:
-systems = { path = "../../../src/systems", default-features = false, features = ["ink-as-dependency"] }
-contract_tools = { path = "../../../src/lib", default-features = false }
+# Single dependency for all on-chain systems and utilities
+dapps = { path = "../../../src", default-features = false, features = ["ink-as-dependency"] }
 # For production, use git:
-# systems = { git = "https://github.com/parity-builders/contract-tools.git", default-features = false, features = ["ink-as-dependency"] }
-# contract_tools = { git = "https://github.com/parity-builders/contract-tools.git", default-features = false }
+# dapps = { git = "https://github.com/parity-builders/contract-tools.git", default-features = false, features = ["ink-as-dependency"] }
 
 [lib]
 path = "lib.rs"
@@ -26,8 +23,7 @@ std = [
     "ink/std",
     "scale/std",
     "scale-info/std",
-    "systems/std",
-    "contract_tools/std",
+    "dapps/std",
 ]
 
 [package.metadata.ink-lang]

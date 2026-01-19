@@ -1,20 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-/**
-    A universally unique identifier (UUID) represented as a 32-byte array.
-*/
-pub type UUID = [u8; 32];
-
-/**
-   Identifier for any  unique *thing* in the system (e.g., user, contract, organization, receipt)
-*/
-pub type EntityId = UUID;
-
-/**
-   Identifier for a unique context which is owned & controlled by an `address`.
-*/
-pub type ContextId = UUID;
-
 #[derive(Default, Clone)]
 #[cfg_attr(
     feature = "std",
@@ -23,7 +8,7 @@ pub type ContextId = UUID;
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub struct RunningAverage {
     sum: u64,
-    total: u32,
+    total: u64,
 }
 
 impl RunningAverage {
@@ -36,15 +21,15 @@ impl RunningAverage {
         let mut sum = self.sum;
         let mut total = self.total;
 
-        if let Some(p) = prev {
-            if total != 0 {
-                sum = sum.saturating_sub(p as u64);
-                total -= 1;
-            }
+        if let Some(p) = prev
+            && total != 0
+        {
+            sum = sum.saturating_sub(u64::from(p));
+            total = total.saturating_sub(1);
         }
 
         if let Some(n) = new {
-            sum = sum.saturating_add(n as u64);
+            sum = sum.saturating_add(u64::from(n));
             total = total.saturating_add(1);
         }
 
@@ -52,7 +37,7 @@ impl RunningAverage {
         self.total = total;
     }
 
-    pub fn n_entries(&self) -> u32 {
+    pub fn n_entries(&self) -> u64 {
         self.total
     }
 
@@ -60,11 +45,19 @@ impl RunningAverage {
         self.sum
     }
 
+    /// Returns the current average value.
+    ///
+    /// Note: Division is required to compute an average. We use saturating_div
+    /// which cannot panic, and the zero case is handled explicitly.
+    #[allow(clippy::arithmetic_side_effects)]
     pub fn val(&self) -> u8 {
-        if self.total == 0 {
+        let total = self.total;
+        if total == 0 {
             0
         } else {
-            (self.sum / self.total as u64) as u8
+            let sum = self.sum;
+            let avg = sum.saturating_div(total);
+            avg.min(255) as u8
         }
     }
 }

@@ -1,7 +1,8 @@
-pop build src/systems/registries/contexts
-pop build src/systems/registries/contracts
-pop build src/systems/reputation
-pop build src/systems/disputes
+# Build contracts using cargo-contract (not pop, due to target spec bug in pop 0.12.1)
+(cd src/systems/registries/contexts && cargo contract build)
+(cd src/systems/registries/contracts && cargo contract build)
+(cd src/systems/reputation && cargo contract build)
+(cd src/systems/disputes && cargo contract build)
 
 cd examples/reputation-interaction
 pnpm papi ink add ../../target/ink/contexts/contexts.contract

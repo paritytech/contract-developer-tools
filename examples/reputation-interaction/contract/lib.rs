@@ -2,10 +2,10 @@
 
 #[ink::contract]
 mod reputation_context_owner {
-    use contract_tools::{ContextId, EntityId};
+    use dapps::reputation::{ReputationRef, Review};
+    use dapps::systems;
+    use dapps::{ContextId, EntityId};
     use ink::prelude::string::String;
-    use systems::CONTRACTS;
-    use systems::reputation::{ReputationRef, Review};
 
     #[ink(storage)]
     pub struct ReputationContextOwner {
@@ -17,10 +17,10 @@ mod reputation_context_owner {
         #[ink(constructor)]
         pub fn new(context_id: ContextId) -> Self {
             // Register this contract as the owner of some context
-            CONTRACTS::registries::contexts().register_context(context_id);
+            systems::registries::contexts().register_context(context_id);
 
             Self {
-                reputation: CONTRACTS::reputation(),
+                reputation: systems::reputation(),
                 context_id,
             }
         }

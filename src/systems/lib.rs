@@ -7,9 +7,8 @@ pub use reputation;
 
 /// Pre-configured contract references using addresses from the `addresses` crate.
 /// CI/deployment will replace the zero addresses in `addresses/lib.rs` with real deployed addresses.
-#[allow(non_snake_case)]
 #[cfg(feature = "ink-as-dependency")]
-pub mod CONTRACTS {
+pub mod systems {
     use ink::env::call::FromAddr;
 
     pub mod registries {

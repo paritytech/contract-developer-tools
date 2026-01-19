@@ -72,8 +72,9 @@ fn parse_hex_address(s: &str) -> Option<[u8; 20]> {
     }
 
     let mut bytes = [0u8; 20];
-    for i in 0..20 {
-        bytes[i] = u8::from_str_radix(&s[i * 2..i * 2 + 2], 16).ok()?;
+    for (i, chunk) in s.as_bytes().chunks(2).enumerate() {
+        let hex_pair = std::str::from_utf8(chunk).ok()?;
+        bytes[i] = u8::from_str_radix(hex_pair, 16).ok()?;
     }
     Some(bytes)
 }
