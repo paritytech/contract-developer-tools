@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::{Address, prelude::string::String};
 use contract_tools::EntityId;
+use ink::{Address, prelude::string::String};
 
 #[derive(Default, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug, ink::storage::traits::StorageLayout))]
@@ -16,21 +16,21 @@ pub enum DisputeStatus {
 #[ink::storage_item(packed)]
 #[derive(Default, Clone)]
 pub struct Dispute {
-    pub id: EntityId,            // Unique dispute identifier (EntityId)
-    pub claimant: Address,       // Who raised the dispute
-    pub against: EntityId,       // What entity the dispute is against (EntityId)
-    pub claim_uri: String,       // IPFS URI with claim details
+    pub id: EntityId,      // Unique dispute identifier (EntityId)
+    pub claimant: Address, // Who raised the dispute
+    pub against: EntityId, // What entity the dispute is against (EntityId)
+    pub claim_uri: String, // IPFS URI with claim details
     pub status: DisputeStatus,
     pub resolution_uri: Option<String>, // Judgment details if resolved
 }
 
 #[ink::contract]
 mod disputes {
-    use ink::storage::Mapping;
-    use ink::env::call::FromAddr;
-    use contract_tools::{ContextId, EntityId};
-    use registries::contexts::ContextRegistryRef;
     use super::*;
+    use contract_tools::{ContextId, EntityId};
+    use ink::env::call::FromAddr;
+    use ink::storage::Mapping;
+    use registries::contexts::ContextRegistryRef;
 
     #[ink(storage)]
     pub struct Disputes {
@@ -55,8 +55,8 @@ mod disputes {
         }
 
         /**
-            Open a new dispute within a context. Only the context owner can open disputes.
-         */
+           Open a new dispute within a context. Only the context owner can open disputes.
+        */
         #[ink(message)]
         pub fn open_dispute(
             &mut self,
@@ -96,7 +96,9 @@ mod disputes {
                 panic!("Only context owner can delete disputes");
             }
 
-            let dispute = self.disputes.get(&(context_id, dispute_id))
+            let dispute = self
+                .disputes
+                .get(&(context_id, dispute_id))
                 .expect("Dispute not found");
 
             if dispute.status != DisputeStatus::Dismissed {
@@ -106,8 +108,8 @@ mod disputes {
         }
 
         /**
-            Provide judgment on a dispute. Only the context owner can provide judgment.
-         */
+           Provide judgment on a dispute. Only the context owner can provide judgment.
+        */
         #[ink(message)]
         pub fn provide_judgment(
             &mut self,
@@ -122,7 +124,9 @@ mod disputes {
                 panic!("Only context owner can provide judgment");
             }
 
-            let mut dispute = self.disputes.get(&(context_id, dispute_id))
+            let mut dispute = self
+                .disputes
+                .get(&(context_id, dispute_id))
                 .expect("Dispute not found");
 
             if dispute.status != DisputeStatus::Open {
@@ -136,8 +140,8 @@ mod disputes {
         }
 
         /**
-            Get a dispute by context and dispute ID.
-         */
+           Get a dispute by context and dispute ID.
+        */
         #[ink(message)]
         pub fn get_dispute(&self, context_id: ContextId, dispute_id: EntityId) -> Option<Dispute> {
             self.disputes.get(&(context_id, dispute_id))

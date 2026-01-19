@@ -2,8 +2,8 @@
 
 #[ink::contract]
 mod context_registry {
-    use ink::storage::Mapping;
     use contract_tools::ContextId;
+    use ink::storage::Mapping;
 
     #[ink(storage)]
     pub struct ContextRegistry {
@@ -23,8 +23,8 @@ mod context_registry {
         }
 
         /**
-            Register a new context with the caller as the owner.
-         */
+           Register a new context with the caller as the owner.
+        */
         #[ink(message)]
         pub fn register_context(&mut self, context_id: ContextId) {
             let caller: Address = self.env().caller();
@@ -36,16 +36,16 @@ mod context_registry {
         }
 
         /**
-            Get the owner of a context.
-         */
+           Get the owner of a context.
+        */
         #[ink(message)]
         pub fn get_owner(&self, context_id: ContextId) -> Option<Address> {
             self.context_owners.get(&context_id)
         }
 
         /**
-            Check if an address is the owner of a context.
-         */
+           Check if an address is the owner of a context.
+        */
         #[ink(message)]
         pub fn is_owner(&self, context_id: ContextId, address: Address) -> bool {
             match self.context_owners.get(&context_id) {

@@ -14,11 +14,11 @@ pub struct Item {
 
 #[ink::contract]
 mod item_tracker {
-    use ink::storage::Mapping;
-    use contract_tools::ContextId;
-    use systems::CONTRACTS;
-    use systems::registries::contexts::ContextRegistryRef;
     use super::*;
+    use contract_tools::ContextId;
+    use ink::storage::Mapping;
+    use systems::registries::contexts::ContextRegistryRef;
+    use systems::CONTRACTS;
 
     #[ink(storage)]
     pub struct ItemTracker {
@@ -70,7 +70,10 @@ mod item_tracker {
             let id = self.next_id;
             self.next_id += 1;
 
-            let item = Item { name: name.clone(), count: 0 };
+            let item = Item {
+                name: name.clone(),
+                count: 0,
+            };
             self.items.insert(id, &item);
             self.all_ids.push(id);
 
@@ -84,7 +87,10 @@ mod item_tracker {
             if let Some(mut item) = self.items.get(id) {
                 item.count = item.count.saturating_add(1);
                 self.items.insert(id, &item);
-                self.env().emit_event(ItemUpdated { id, new_count: item.count });
+                self.env().emit_event(ItemUpdated {
+                    id,
+                    new_count: item.count,
+                });
             } else {
                 panic!("Item not found");
             }
@@ -96,7 +102,10 @@ mod item_tracker {
             if let Some(mut item) = self.items.get(id) {
                 item.count = item.count.saturating_sub(1);
                 self.items.insert(id, &item);
-                self.env().emit_event(ItemUpdated { id, new_count: item.count });
+                self.env().emit_event(ItemUpdated {
+                    id,
+                    new_count: item.count,
+                });
             } else {
                 panic!("Item not found");
             }

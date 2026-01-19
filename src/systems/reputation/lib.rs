@@ -2,7 +2,6 @@
 
 use ink::prelude::string::String;
 
-
 #[ink::storage_item(packed)]
 #[derive(Default, Clone)]
 pub struct Review {
@@ -12,11 +11,11 @@ pub struct Review {
 
 #[ink::contract]
 mod reputation {
-    use ink::storage::Mapping;
-    use ink::env::call::FromAddr;
-    use contract_tools::{ContextId, EntityId};
-    use registries::contexts::ContextRegistryRef;
     use super::*;
+    use contract_tools::{ContextId, EntityId};
+    use ink::env::call::FromAddr;
+    use ink::storage::Mapping;
+    use registries::contexts::ContextRegistryRef;
 
     #[ink(storage)]
     pub struct Reputation {
@@ -42,24 +41,36 @@ mod reputation {
         }
 
         /**
-            Submit a review for an entity within a context. Only the context owner can submit reviews.
-         */
+           Submit a review for an entity within a context. Only the context owner can submit reviews.
+        */
         #[ink(message)]
-        pub fn submit_review(&mut self, context_id: ContextId, reviewer: Address, review: Review, entity: EntityId) {
+        pub fn submit_review(
+            &mut self,
+            context_id: ContextId,
+            reviewer: Address,
+            review: Review,
+            entity: EntityId,
+        ) {
             let caller: Address = self.env().caller();
 
             if !self.context_registry.is_owner(context_id, caller) {
                 panic!("Only context owner can submit reviews");
             }
 
-            self.reviews.insert(&(context_id, reviewer, entity), &review);
+            self.reviews
+                .insert(&(context_id, reviewer, entity), &review);
         }
 
         /**
-            Delete a review for an entity within a context. Only the context owner can delete reviews.
-         */
+           Delete a review for an entity within a context. Only the context owner can delete reviews.
+        */
         #[ink(message)]
-        pub fn delete_review(&mut self, context_id: ContextId, reviewer: Address, entity: EntityId) {
+        pub fn delete_review(
+            &mut self,
+            context_id: ContextId,
+            reviewer: Address,
+            entity: EntityId,
+        ) {
             let caller: Address = self.env().caller();
 
             if !self.context_registry.is_owner(context_id, caller) {

@@ -10,18 +10,18 @@ pub type Version = u32;
 #[derive(Default, Clone)]
 pub struct PublishedContract {
     /**
-        The block number when this contract version was published
-     */
+       The block number when this contract version was published
+    */
     pub publish_block: BlockNumber,
 
     /**
-        The address of the published contract
-     */
+       The address of the published contract
+    */
     pub address: Address,
 
     /**
-        Bulletin chain IPFS URI pointing to this contract version's metadata
-     */
+       Bulletin chain IPFS URI pointing to this contract version's metadata
+    */
     pub metadata_uri: String,
 }
 
@@ -29,41 +29,40 @@ pub struct PublishedContract {
 #[derive(Default, Clone)]
 pub struct NamedContractInfo {
     /**
-        The owner of the contract name
-     */
+       The owner of the contract name
+    */
     pub owner: Address,
 
     /**
-        The number of versions published under this contract name.
-        `version_count - 1` refers to the latest published version
-     */
+       The number of versions published under this contract name.
+       `version_count - 1` refers to the latest published version
+    */
     pub version_count: Version,
 }
 
 #[ink::contract]
 mod contract_registry {
-    use ink::storage::StorageVec;
-    use ink::storage::Mapping;
-    use ink::prelude::string::String;
     use super::{NamedContractInfo, PublishedContract, Version};
+    use ink::prelude::string::String;
+    use ink::storage::Mapping;
+    use ink::storage::StorageVec;
 
     #[ink(storage)]
     pub struct ContractRegistry {
-
         /**
-            List of all registered contract names, ordered by creation time
-         */
+           List of all registered contract names, ordered by creation time
+        */
         pub contract_names: StorageVec<String>,
 
         /**
-            Stores all published versions of named contracts where the key for
-            an individual versioned contract is given by `(contract_name, version)`
-         */
+           Stores all published versions of named contracts where the key for
+           an individual versioned contract is given by `(contract_name, version)`
+        */
         pub published_contract: Mapping<(String, Version), PublishedContract>,
 
         /**
-            Stores info about each registered contract name
-         */
+           Stores info about each registered contract name
+        */
         pub info: Mapping<String, NamedContractInfo>,
     }
 
@@ -78,13 +77,18 @@ mod contract_registry {
         }
 
         /**
-            Publish the latest version of a contract registered under name `contract_name`
+           Publish the latest version of a contract registered under name `contract_name`
 
-            The caller only has permission to publish a new version of `contract_name` if
-            either the name is available or they are already the owner of the name.
-         */
+           The caller only has permission to publish a new version of `contract_name` if
+           either the name is available or they are already the owner of the name.
+        */
         #[ink(message)]
-        pub fn publish_latest(&mut self, contract_name: String, contract_address: Address, metadata_uri: String) {
+        pub fn publish_latest(
+            &mut self,
+            contract_name: String,
+            contract_address: Address,
+            metadata_uri: String,
+        ) {
             let caller = self.env().caller();
 
             // Get existing info or register new `contract_name` with caller as owner
@@ -120,19 +124,20 @@ mod contract_registry {
             };
             self.published_contract.insert(
                 &(contract_name, info.version_count.saturating_sub(1)),
-                &latest
+                &latest,
             );
         }
 
         /**
-            Get the latest `PublishedContract` for a given `contract_name`
-         */
+           Get the latest `PublishedContract` for a given `contract_name`
+        */
         #[ink(message)]
         pub fn get_latest(&self, contract_name: String) -> Option<PublishedContract> {
             let info = self.info.get(&contract_name);
             if let Some(info) = info {
                 let latest_version = info.version_count.saturating_sub(1);
-                self.published_contract.get(&(contract_name, latest_version))
+                self.published_contract
+                    .get(&(contract_name, latest_version))
             } else {
                 None
             }
@@ -144,7 +149,7 @@ mod contract_registry {
         use super::*;
         use ink::env::test;
 
-        fn default_accounts() -> test::DefaultAccounts{
+        fn default_accounts() -> test::DefaultAccounts {
             test::default_accounts()
         }
 
@@ -170,7 +175,9 @@ mod contract_registry {
 
             registry.publish_latest(name.clone(), addr, uri.clone());
 
-            let latest = registry.get_latest(name.clone()).expect("contract should exist");
+            let latest = registry
+                .get_latest(name.clone())
+                .expect("contract should exist");
             assert_eq!(latest.address, addr);
             assert_eq!(latest.metadata_uri, uri);
 
@@ -188,18 +195,10 @@ mod contract_registry {
             let name = String::from("my_contract");
 
             // Publish version 0
-            registry.publish_latest(
-                name.clone(),
-                accounts.bob,
-                String::from("ipfs://v0"),
-            );
+            registry.publish_latest(name.clone(), accounts.bob, String::from("ipfs://v0"));
 
             // Publish version 1
-            registry.publish_latest(
-                name.clone(),
-                accounts.charlie,
-                String::from("ipfs://v1"),
-            );
+            registry.publish_latest(name.clone(), accounts.charlie, String::from("ipfs://v1"));
 
             // Latest should be version 1
             let latest = registry.get_latest(name.clone()).expect("should exist");
@@ -228,11 +227,7 @@ mod contract_registry {
 
             // Alice publishes first, becoming owner
             set_caller(accounts.alice);
-            registry.publish_latest(
-                name.clone(),
-                accounts.bob,
-                String::from("ipfs://v0"),
-            );
+            registry.publish_latest(name.clone(), accounts.bob, String::from("ipfs://v0"));
 
             // Bob tries to publish to the same name
             set_caller(accounts.bob);
@@ -281,8 +276,12 @@ mod contract_registry {
             );
 
             // Both should exist independently
-            let a = registry.get_latest(String::from("contract_a")).expect("a should exist");
-            let b = registry.get_latest(String::from("contract_b")).expect("b should exist");
+            let a = registry
+                .get_latest(String::from("contract_a"))
+                .expect("a should exist");
+            let b = registry
+                .get_latest(String::from("contract_b"))
+                .expect("b should exist");
 
             assert_eq!(a.address, accounts.bob);
             assert_eq!(b.address, accounts.charlie);

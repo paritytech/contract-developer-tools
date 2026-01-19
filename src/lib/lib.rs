@@ -6,17 +6,20 @@
 pub type UUID = [u8; 32];
 
 /**
-    Identifier for any  unique *thing* in the system (e.g., user, contract, organization, receipt)
- */
+   Identifier for any  unique *thing* in the system (e.g., user, contract, organization, receipt)
+*/
 pub type EntityId = UUID;
 
 /**
-    Identifier for a unique context which is owned & controlled by an `address`.
- */
+   Identifier for a unique context which is owned & controlled by an `address`.
+*/
 pub type ContextId = UUID;
 
 #[derive(Default, Clone)]
-#[cfg_attr(feature = "std", derive(Debug, PartialEq, Eq, ink::storage::traits::StorageLayout))]
+#[cfg_attr(
+    feature = "std",
+    derive(Debug, PartialEq, Eq, ink::storage::traits::StorageLayout)
+)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub struct RunningAverage {
     sum: u64,

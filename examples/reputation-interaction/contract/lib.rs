@@ -2,8 +2,8 @@
 
 #[ink::contract]
 mod reputation_context_owner {
-    use ink::prelude::string::String;
     use contract_tools::{ContextId, EntityId};
+    use ink::prelude::string::String;
     use systems::CONTRACTS;
     use systems::reputation::{ReputationRef, Review};
 
@@ -27,12 +27,7 @@ mod reputation_context_owner {
 
         /// Forward a user review to the reputation storage layer.
         #[ink(message)]
-        pub fn post_review(
-            &mut self,
-            entity: EntityId,
-            rating: u8,
-            comment_uri: String,
-        ) {
+        pub fn post_review(&mut self, entity: EntityId, rating: u8, comment_uri: String) {
             if rating == 0 || rating > 5 {
                 panic!("rating must be in 1..=5");
             }
@@ -41,12 +36,8 @@ mod reputation_context_owner {
                 rating,
                 comment_uri,
             };
-            self.reputation.submit_review(
-                self.context_id,
-                self.env().caller(),
-                review,
-                entity,
-            );
+            self.reputation
+                .submit_review(self.context_id, self.env().caller(), review, entity);
         }
 
         #[ink(message)]

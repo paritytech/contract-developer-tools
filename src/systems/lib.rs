@@ -1,9 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use addresses;
+pub use disputes;
 pub use registries;
 pub use reputation;
-pub use disputes;
 
 /// Pre-configured contract references using addresses from the `addresses` crate.
 /// CI/deployment will replace the zero addresses in `addresses/lib.rs` with real deployed addresses.
@@ -16,11 +16,15 @@ pub mod CONTRACTS {
         use super::*;
 
         pub fn contexts() -> crate::registries::contexts::ContextRegistryRef {
-            crate::registries::contexts::ContextRegistryRef::from_addr(crate::addresses::CONTEXT_REGISTRY)
+            crate::registries::contexts::ContextRegistryRef::from_addr(
+                crate::addresses::CONTEXT_REGISTRY,
+            )
         }
 
         pub fn contracts() -> crate::registries::contracts::ContractRegistryRef {
-            crate::registries::contracts::ContractRegistryRef::from_addr(crate::addresses::CONTRACT_REGISTRY)
+            crate::registries::contracts::ContractRegistryRef::from_addr(
+                crate::addresses::CONTRACT_REGISTRY,
+            )
         }
     }
 
