@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 /**
-    A universally unique identifier (UUID) represented as a 64-byte array.
+    A universally unique identifier (UUID) represented as a 32-byte array.
 */
 pub type UUID = [u8; 32];
 

@@ -88,6 +88,23 @@ mod disputes {
             self.disputes.insert(&(context_id, dispute_id), &dispute);
         }
 
+        #[ink(message)]
+        pub fn delete_dispute(&mut self, context_id: ContextId, dispute_id: EntityId) {
+            let caller: Address = self.env().caller();
+
+            if !self.context_registry.is_owner(context_id, caller) {
+                panic!("Only context owner can delete disputes");
+            }
+
+            let dispute = self.disputes.get(&(context_id, dispute_id))
+                .expect("Dispute not found");
+
+            if dispute.status != DisputeStatus::Dismissed {
+                panic!("Only dismissed disputes can be deleted");
+            }
+            self.disputes.remove(&(context_id, dispute_id));
+        }
+
         /**
             Provide judgment on a dispute. Only the context owner can provide judgment.
          */
