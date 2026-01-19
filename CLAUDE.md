@@ -20,7 +20,7 @@ This is a Rust/ink! smart contract workspace for Polkadot/Substrate chains. It p
 
 **Deploy to Paseo testnet**: `bash scripts/deploy.sh`
 
-**Run TypeScript client** (from `examples/reputation-interaction/`):
+**Run TypeScript client** (from `examples/market-api/`):
 ```sh
 bun src/index.ts      # interact with deployed contract
 bun src/view.ts       # view contract storage
@@ -118,7 +118,7 @@ use dapps::math::RunningAverage;
 - `dapps::reputation::ReputationRef`
 - `dapps::disputes::DisputesRef`
 
-See `examples/reputation-interaction/contract/` for a complete example.
+See `examples/market-api/contract/` for a complete example.
 
 ### TypeScript Client
 

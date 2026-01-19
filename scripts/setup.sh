@@ -1,4 +1,4 @@
-cd examples/reputation-interaction
+cd examples/market-api
 
 mkdir -p .papi/descriptors
 pnpm install

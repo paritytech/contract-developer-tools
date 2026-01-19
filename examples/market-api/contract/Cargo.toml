@@ -1,5 +1,5 @@
 [package]
-name = "reputation_context_owner"
+name = "market-api"
 version = "0.1.0"
 edition = "2024"
 authors = ["Parity Technologies"]

@@ -99,21 +99,21 @@ echo -e "${YELLOW}--- Phase 3: Examples ---${NC}"
 # The example contracts take a context_id (32 bytes) as constructor argument
 # Using simple hex strings padded to 32 bytes
 
-# Reputation example context
-REPUTATION_CONTEXT_ID="0x4558414d504c455f434f4e5445585400000000000000000000000000000000"
-deploy_contract "ReputationContextOwner" "examples/reputation-interaction/contract" "REPUTATION_CONTEXT_OWNER" "$REPUTATION_CONTEXT_ID"
+# Market API example context
+MARKET_API_CONTEXT_ID="0x4558414d504c455f434f4e5445585400000000000000000000000000000000"
+deploy_contract "MarketApi" "examples/market-api/contract" "MARKET_API" "$MARKET_API_CONTEXT_ID"
 
 # Item tracker example context
 ITEM_TRACKER_CONTEXT_ID="0x4954454d5f545241434b45525f435458000000000000000000000000000000"
 deploy_contract "ItemTracker" "examples/system-basic/contract" "ITEM_TRACKER" "$ITEM_TRACKER_CONTEXT_ID"
 
-# Update TypeScript descriptors for reputation-interaction
+# Update TypeScript descriptors for market-api
 echo ""
 echo -e "${YELLOW}--- Updating TypeScript descriptors ---${NC}"
-cd examples/reputation-interaction
+cd examples/market-api
 pnpm papi ink add ../../target/ink/contexts/contexts.contract 2>&1 | grep -v "^$" | head -3 || true
 pnpm papi ink add ../../target/ink/reputation/reputation.contract 2>&1 | grep -v "^$" | head -3 || true
-pnpm papi ink add ../../target/ink/reputation_context_owner/reputation_context_owner.contract 2>&1 | grep -v "^$" | head -3 || true
+pnpm papi ink add ../../target/ink/market_api/market_api.contract 2>&1 | grep -v "^$" | head -3 || true
 cd ../..
 
 # Update TypeScript descriptors for system-basic
@@ -134,7 +134,7 @@ echo -e "${BLUE}Node running at: $NODE_URL${NC}"
 echo -e "${BLUE}Portal: https://polkadot.js.org/apps/?rpc=ws://localhost:9944/#/explorer${NC}"
 echo ""
 echo -e "${YELLOW}To verify deployment:${NC}"
-echo "  cd examples/reputation-interaction && bun src/verify-local.ts"
+echo "  cd examples/market-api && bun src/verify-local.ts"
 echo ""
 echo -e "${YELLOW}To stop the node:${NC}"
 echo "  pkill -f 'ink-node'"

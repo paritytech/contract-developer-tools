@@ -4,7 +4,7 @@
 (cd src/systems/reputation && cargo contract build)
 (cd src/systems/disputes && cargo contract build)
 
-cd examples/reputation-interaction
+cd examples/market-api
 pnpm papi ink add ../../target/ink/contexts/contexts.contract
 pnpm papi ink add ../../target/ink/contracts/contracts.contract
 pnpm papi ink add ../../target/ink/reputation/reputation.contract

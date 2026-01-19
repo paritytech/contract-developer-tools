@@ -1,19 +1,23 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 #[ink::contract]
-mod reputation_context_owner {
-    use dapps::reputation::{ReputationRef, Review};
-    use dapps::systems;
-    use dapps::{ContextId, EntityId};
+mod market_api {
+    use dapps::{
+        ContextId, EntityId, math,
+        disputes::{Dispute, DisputesRef},
+        reputation::{ReputationRef, Review},
+        systems,
+    };
     use ink::prelude::string::String;
 
     #[ink(storage)]
-    pub struct ReputationContextOwner {
+    pub struct MarketApi {
         context_id: ContextId,
         reputation: ReputationRef,
+        disputes: DisputesRef,
     }
 
-    impl ReputationContextOwner {
+    impl MarketApi {
         #[ink(constructor)]
         pub fn new(context_id: ContextId) -> Self {
             // Register this contract as the owner of some context
@@ -21,6 +25,7 @@ mod reputation_context_owner {
 
             Self {
                 reputation: systems::reputation(),
+                disputes: systems::disputes(),
                 context_id,
             }
         }
