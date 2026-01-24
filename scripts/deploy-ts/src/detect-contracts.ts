@@ -1,33 +1,24 @@
-import { readFileSync, readdirSync, statSync } from "fs";
-import { join, relative } from "path";
+import { detectDeploymentOrder } from "./deployment-order/index.ts";
 
 const ROOT = process.argv[2] || process.cwd();
 
-function findCargoFiles(dir: string): string[] {
-    const entries = readdirSync(dir, { withFileTypes: true });
-    let results: string[] = [];
-    for (const entry of entries) {
-        const path = join(dir, entry.name);
-        if (entry.isDirectory() && entry.name !== "target") {
-            results = results.concat(findCargoFiles(path));
-        } else if (entry.name === "Cargo.toml") {
-            results.push(path);
-        }
-    }
-    return results;
+console.log("Detecting ink! contracts with CDM annotations...\n");
+
+const order = detectDeploymentOrder(ROOT);
+
+console.log("Contracts found:");
+for (const contract of order.contracts) {
+    console.log(`  ${contract.name}`);
+    console.log(`    CDM Package: ${contract.cdmPackage || "(none)"}`);
+    console.log(`    Path: ${contract.path}`);
+    console.log(
+        `    Depends on: ${contract.dependsOnCrates.length > 0 ? contract.dependsOnCrates.join(", ") : "(none)"}`,
+    );
+    console.log();
 }
 
-function isInkContract(cargoPath: string): boolean {
-    const content = readFileSync(cargoPath, "utf-8");
-    return content.includes("[package.metadata.ink-lang]");
+console.log("Deployment order:");
+for (let i = 0; i < order.crateNames.length; i++) {
+    const pkg = order.cdmPackages[i];
+    console.log(`  ${i + 1}. ${order.crateNames[i]}${pkg ? ` (${pkg})` : ""}`);
 }
-
-function detectContracts(root: string): string[] {
-    return findCargoFiles(root)
-        .filter(isInkContract)
-        .map(p => relative(root, p).replace("/Cargo.toml", ""));
-}
-
-const contracts = detectContracts(ROOT);
-console.log("Detected ink! contracts:");
-contracts.forEach(c => console.log(`  ${c}`));
