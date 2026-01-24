@@ -9,8 +9,9 @@ ink = { workspace = true }
 scale = { workspace = true }
 scale-info = { workspace = true }
 dapps_core = { path = "../../core", default-features = false }
-addresses = { path = "../addresses", default-features = false }
 registries = { path = "../registries", default-features = false, features = ["ink-as-dependency"] }
+contracts = { path = "../registries/contracts", default-features = false, features = ["ink-as-dependency"] }
+cdm-macro = { path = "../../core/cdm-macro" }
 
 [dev-dependencies]
 ink_e2e = { workspace = true }
@@ -25,8 +26,8 @@ std = [
     "scale/std",
     "scale-info/std",
     "dapps_core/std",
-    "addresses/std",
     "registries/std",
+    "contracts/std",
 ]
 ink-as-dependency = []
 e2e-tests = []

@@ -24,11 +24,11 @@ pub struct Dispute {
     pub resolution_uri: Option<String>, // Judgment details if resolved
 }
 
+#[cdm_macro::cdm("@polkadot/disputes")]
 #[ink::contract]
 mod disputes {
     use super::*;
     use dapps_core::{ContextId, EntityId};
-    use ink::env::call::FromAddr;
     use ink::storage::Mapping;
     use registries::contexts::ContextRegistryRef;
 
@@ -49,7 +49,7 @@ mod disputes {
         #[ink(constructor)]
         pub fn new() -> Self {
             Self {
-                context_registry: ContextRegistryRef::from_addr(addresses::CONTEXT_REGISTRY),
+                context_registry: registries::contexts::reference(),
                 disputes: Mapping::default(),
             }
         }

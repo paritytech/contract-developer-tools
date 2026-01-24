@@ -10,11 +10,11 @@ pub struct Edge {
     pub metadata_uri: Option<String>,
 }
 
+#[cdm_macro::cdm("@polkadot/entity_graph")]
 #[ink::contract]
 mod entity_graph {
     use super::*;
     use dapps_core::{ContextId, EntityId};
-    use ink::env::call::FromAddr;
     use ink::storage::Mapping;
     use registries::contexts::ContextRegistryRef;
 
@@ -37,7 +37,7 @@ mod entity_graph {
         #[ink(constructor)]
         pub fn new() -> Self {
             Self {
-                context_registry: ContextRegistryRef::from_addr(addresses::CONTEXT_REGISTRY),
+                context_registry: registries::contexts::reference(),
                 edges: Mapping::default(),
             }
         }

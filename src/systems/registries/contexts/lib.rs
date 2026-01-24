@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
+#[cdm_macro::cdm("@polkadot/contexts")]
 #[ink::contract]
 mod context_registry {
     use dapps_core::ContextId;

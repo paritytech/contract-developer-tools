@@ -3,12 +3,12 @@
 #[ink::contract]
 mod market_api {
     use dapps::{
-        ContextId, EntityId,
+        ContextId, EntityId, disputes,
         disputes::{Dispute, DisputesRef},
+        entity_graph,
         entity_graph::EntityGraphRef,
-        math,
+        math, registries, reputation,
         reputation::{ReputationRef, Review},
-        systems,
     };
     use ink::prelude::string::String;
 
@@ -16,7 +16,7 @@ mod market_api {
     pub struct MarketApi {
         context_id: ContextId,
         reputation: ReputationRef,
-        relationships: EntityGraphRef,
+        graph: EntityGraphRef,
         disputes: DisputesRef,
     }
 
@@ -24,12 +24,12 @@ mod market_api {
         #[ink(constructor)]
         pub fn new(context_id: ContextId) -> Self {
             // Register this contract as the owner of some context
-            systems::registries::contexts().register_context(context_id);
+            registries::contexts::reference().register_context(context_id);
 
             Self {
-                reputation: systems::reputation(),
-                disputes: systems::disputes(),
-                relationships: systems::entity_graph(),
+                reputation: reputation::reference(),
+                disputes: disputes::reference(),
+                graph: entity_graph::reference(),
                 context_id,
             }
         }
@@ -47,11 +47,6 @@ mod market_api {
             };
             self.reputation
                 .submit_review(self.context_id, self.env().caller(), review, entity);
-        }
-
-        #[ink(message)]
-        pub fn context_id(&self) -> ContextId {
-            self.context_id
         }
     }
 }

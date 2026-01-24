@@ -2,6 +2,7 @@
 
 use ink::Address;
 use ink::env::BlockNumber;
+use ink::env::call::FromAddr;
 use ink::prelude::string::String;
 
 pub type Version = u32;
@@ -38,6 +39,17 @@ pub struct NamedContractInfo {
        `version_count - 1` refers to the latest published version
     */
     pub version_count: Version,
+}
+
+/// Bootstrap address for the contracts registry.
+/// This is the root of the CDM system - all other contracts are resolved through this.
+/// TODO: Replace with actual deployed address.
+pub const CONTRACTS_REGISTRY_ADDR: [u8; 20] = [0u8; 20];
+
+/// Get a reference to the contracts registry at the bootstrap address.
+/// This is the root of the CDM system.
+pub fn reference() -> contract_registry::ContractRegistryRef {
+    contract_registry::ContractRegistryRef::from_addr(CONTRACTS_REGISTRY_ADDR.into())
 }
 
 #[ink::contract]
@@ -141,6 +153,15 @@ mod contract_registry {
             } else {
                 None
             }
+        }
+
+        /**
+           Get just the address of the latest published contract for a given `contract_name`.
+           This is a convenience function for CDM runtime lookups.
+        */
+        #[ink(message)]
+        pub fn get_address(&self, contract_name: String) -> Option<Address> {
+            self.get_latest(contract_name).map(|c| c.address)
         }
     }
 

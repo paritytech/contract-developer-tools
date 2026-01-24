@@ -9,11 +9,11 @@ pub struct Review {
     pub comment_uri: String,
 }
 
+#[cdm_macro::cdm("@polkadot/reputation")]
 #[ink::contract]
 mod reputation {
     use super::*;
     use dapps_core::{ContextId, EntityId};
-    use ink::env::call::FromAddr;
     use ink::storage::Mapping;
     use registries::contexts::ContextRegistryRef;
 
@@ -35,7 +35,7 @@ mod reputation {
         #[ink(constructor)]
         pub fn new() -> Self {
             Self {
-                context_registry: ContextRegistryRef::from_addr(addresses::CONTEXT_REGISTRY),
+                context_registry: registries::contexts::reference(),
                 reviews: Mapping::default(),
             }
         }
