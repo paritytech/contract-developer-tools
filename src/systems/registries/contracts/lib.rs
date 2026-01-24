@@ -2,7 +2,6 @@
 
 use ink::Address;
 use ink::env::BlockNumber;
-use ink::env::call::FromAddr;
 use ink::prelude::string::String;
 
 pub type Version = u32;
@@ -43,12 +42,48 @@ pub struct NamedContractInfo {
 
 /// Bootstrap address for the contracts registry.
 /// This is the root of the CDM system - all other contracts are resolved through this.
-/// TODO: Replace with actual deployed address.
-pub const CONTRACTS_REGISTRY_ADDR: [u8; 20] = [0u8; 20];
+///
+/// Set via the `CONTRACTS_REGISTRY_ADDR` environment variable at compile time.
+/// Example: `CONTRACTS_REGISTRY_ADDR=0x1234...abcd cargo build`
+///
+/// The deployment script handles this automatically:
+/// 1. Deploy contracts registry first
+/// 2. Set env var with the deployed address
+/// 3. Rebuild all other contracts
+pub const CONTRACTS_REGISTRY_ADDR: [u8; 20] = {
+    const fn hex(c: u8) -> u8 {
+        match c {
+            b'0'..=b'9' => c - b'0',
+            b'a'..=b'f' => c - b'a' + 10,
+            b'A'..=b'F' => c - b'A' + 10,
+            _ => panic!("Invalid hex character"),
+        }
+    }
+
+    match option_env!("CONTRACTS_REGISTRY_ADDR") {
+        Some(s) => {
+            let b = s.as_bytes();
+            let off = if b.len() > 1 && b[0] == b'0' && (b[1] == b'x' || b[1] == b'X') { 2 } else { 0 };
+            assert!(b.len() - off == 40, "Address must be 40 hex chars");
+            let mut r = [0u8; 20];
+            let mut i = 0;
+            while i < 20 {
+                r[i] = hex(b[off + i * 2]) << 4 | hex(b[off + i * 2 + 1]);
+                i += 1;
+            }
+            r
+        }
+        None => [0u8; 20],
+    }
+};
 
 /// Get a reference to the contracts registry at the bootstrap address.
 /// This is the root of the CDM system.
+///
+/// Only available when compiled as a dependency (ink-as-dependency feature).
+#[cfg(feature = "ink-as-dependency")]
 pub fn reference() -> contract_registry::ContractRegistryRef {
+    use ink::env::call::FromAddr;
     contract_registry::ContractRegistryRef::from_addr(CONTRACTS_REGISTRY_ADDR.into())
 }
 

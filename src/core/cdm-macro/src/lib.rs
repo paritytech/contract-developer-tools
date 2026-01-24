@@ -93,6 +93,8 @@ pub fn cdm(attr: TokenStream, item: TokenStream) -> TokenStream {
     let ref_type = format_ident!("{}Ref", storage_struct_name);
 
     // Generate the reference() function at crate level
+    // This is gated behind ink-as-dependency because the Ref type only exists
+    // when the contract is compiled as a dependency (not as a standalone binary)
     let generated: TokenStream2 = quote! {
         #input  // Pass through the original ink contract unchanged
 
@@ -105,6 +107,7 @@ pub fn cdm(attr: TokenStream, item: TokenStream) -> TokenStream {
         ///
         /// Panics if the contract is not registered in the contracts registry
         /// under the name "#package_name".
+        #[cfg(feature = "ink-as-dependency")]
         pub fn reference() -> #module_name::#ref_type {
             use ink::env::call::FromAddr;
             use ink::prelude::string::String;
