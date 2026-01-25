@@ -1,27 +1,26 @@
 import { ApiPromise, WsProvider, Keyring } from "@polkadot/api";
 import { cryptoWaitReady } from "@polkadot/util-crypto";
 import { readFileSync, existsSync, writeFileSync } from "fs";
-import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
+import { resolve } from "path";
 import { execSync } from "child_process";
 import { detectDeploymentOrder } from "./deployment-order/index.ts";
-
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
-const NODE_URL = process.env.NODE_URL || "ws://127.0.0.1:10020";
-const SURI = process.env.SURI || "//Alice";
-const SKIP_REBUILD = process.env.SKIP_REBUILD === "true";
-
-// The contracts registry is the bootstrap - it's deployed first and has no CDM macro
-const CONTRACTS_REGISTRY_CRATE = "contracts";
-
-// Generous defaults - work for most contracts, unused gas is refunded
-const GAS_LIMIT = { refTime: 500_000_000_000n, proofSize: 2_000_000n };
-const STORAGE_DEPOSIT_LIMIT = 10_000_000_000_000n;
+import {
+    ROOT,
+    NODE_URL,
+    SURI,
+    SKIP_REBUILD,
+    CONTRACTS_REGISTRY_CRATE,
+    GAS_LIMIT,
+    STORAGE_DEPOSIT_LIMIT,
+} from "./constants";
 
 let api: ApiPromise;
 let signer: ReturnType<Keyring["addFromUri"]>;
 
-async function submitTx(tx: ReturnType<typeof api.tx.revive.mapAccount>, timeoutMs = 60000) {
+async function submitTx(
+    tx: ReturnType<typeof api.tx.revive.mapAccount>,
+    timeoutMs = 60000,
+) {
     return new Promise<any[]>((resolve, reject) => {
         const timeout = setTimeout(() => {
             reject(new Error(`Transaction timed out after ${timeoutMs}ms`));
@@ -37,7 +36,9 @@ async function submitTx(tx: ReturnType<typeof api.tx.revive.mapAccount>, timeout
             if (dispatchError) {
                 let errMsg: string;
                 if (dispatchError.isModule) {
-                    const decoded = api.registry.findMetaError(dispatchError.asModule);
+                    const decoded = api.registry.findMetaError(
+                        dispatchError.asModule,
+                    );
                     errMsg = `${decoded.section}.${decoded.name}: ${decoded.docs.join(" ")}`;
                 } else {
                     errMsg = dispatchError.toString();
@@ -125,7 +126,11 @@ async function registerInRegistry(
         contractAddr,
         metadataUri,
     );
-    const callDataHex = "0x" + Array.from(callData).map(b => b.toString(16).padStart(2, "0")).join("");
+    const callDataHex =
+        "0x" +
+        Array.from(callData)
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("");
 
     const tx = api.tx.revive.call(
         registryAddr, // dest
@@ -210,7 +215,9 @@ function rebuildContractsWithRegistryAddr(
     registryAddr: string,
     crateNames: string[],
 ): void {
-    console.log(`\nRebuilding contracts with CONTRACTS_REGISTRY_ADDR=${registryAddr}...`);
+    console.log(
+        `\nRebuilding contracts with CONTRACTS_REGISTRY_ADDR=${registryAddr}...`,
+    );
 
     // Build each contract individually with the env var set
     for (const crateName of crateNames) {
@@ -281,7 +288,9 @@ async function main() {
 
     // Phase 2: Rebuild all other contracts with the registry address baked in
     if (!SKIP_REBUILD && order.crateNames.length > 0) {
-        console.log(`\n=== Phase 2: Rebuild contracts with registry address ===`);
+        console.log(
+            `\n=== Phase 2: Rebuild contracts with registry address ===`,
+        );
         rebuildContractsWithRegistryAddr(registryAddr, order.crateNames);
     } else if (SKIP_REBUILD) {
         console.log(`\nSkipping rebuild (SKIP_REBUILD=true)`);
