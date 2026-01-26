@@ -61,9 +61,14 @@ pub const CONTRACTS_REGISTRY_ADDR: [u8; 20] = {
     }
 
     match option_env!("CONTRACTS_REGISTRY_ADDR") {
+        // Parse the address from the env var at compile time
         Some(s) => {
             let b = s.as_bytes();
-            let off = if b.len() > 1 && b[0] == b'0' && (b[1] == b'x' || b[1] == b'X') { 2 } else { 0 };
+            let off = if b.len() > 1 && b[0] == b'0' && (b[1] == b'x' || b[1] == b'X') {
+                2
+            } else {
+                0
+            };
             assert!(b.len() - off == 40, "Address must be 40 hex chars");
             let mut r = [0u8; 20];
             let mut i = 0;

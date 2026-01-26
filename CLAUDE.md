@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Rust/ink! smart contract workspace for Polkadot/Substrate chains. It provides reusable on-chain systems (contracts) and shared utilities via the `dapps` crate, with TypeScript tooling for chain interaction.
+This is a Rust/ink! smart contract workspace for Polkadot/Substrate chains. It provides reusable on-chain systems (contracts) and shared utilities via the `dapps` crate, with TypeScript tooling for chain interaction and deployment.
+
+The project uses the **CDM (Contract Deployment Manager)** system for automated contract deployment and runtime contract linking.
 
 ## Commands
 
@@ -12,13 +14,33 @@ This is a Rust/ink! smart contract workspace for Polkadot/Substrate chains. It p
 
 **Build contracts**: `bash scripts/build.sh`
 
-**Run all tests**: `bash scripts/test.sh`
+**Run unit tests**: `bash scripts/test.sh`
 
-**Test a single contract**: `pop test src/systems/<path> --e2e`
+**Build a single contract**: `cargo contract build` (from contract directory)
 
-**Build a single contract**: `pop build src/systems/<path>`
+**Integration tests** (requires zombienet running):
+```sh
+# 1. Start zombienet (from product-preview-net repo)
+zombie-cli spawn -p native bin/local-dev.toml
 
-**Deploy to Paseo testnet**: `bash scripts/deploy.sh`
+# 2. Deploy contracts
+cd scripts/deploy-ts && bun src/deploy.ts
+
+# 3. Run integration test
+CONTRACTS_REGISTRY_ADDR=<deployed-addr> bun src/integration-test.ts
+```
+
+**Deploy with CDM CLI** (from `src/packages/cdm-cli/`):
+```sh
+# Build all contracts (requires registry address)
+CONTRACTS_REGISTRY_ADDR=0x... bun run dev build
+
+# Deploy to local node
+CONTRACTS_REGISTRY_ADDR=0x... bun run dev deploy ws://localhost:9944
+
+# Dry-run to see deployment plan
+CONTRACTS_REGISTRY_ADDR=0x... bun run dev deploy --dry-run ws://localhost:9944
+```
 
 **Run TypeScript client** (from `examples/market-api/`):
 ```sh
@@ -29,54 +51,84 @@ bun src/view.ts       # view contract storage
 ## Architecture
 
 ### Workspace Structure
-- `src/` - Main `dapps` crate that re-exports everything
-  - `core/` - Core types (`EntityId`, `ContextId`, `UUID`) and utilities
-    - `math/` - Math utilities (`RunningAverage`)
-  - `systems/` - System contracts
-    - `registries/contexts/` - Context registry contract
-    - `registries/contracts/` - Contract registry contract
-    - `reputation/` - Reputation contract
-    - `disputes/` - Disputes contract
-- `examples/*/contract/` - Example contracts demonstrating system usage
+```
+src/
+├── lib.rs                    # Main dapps crate re-exports
+├── core/
+│   ├── lib.rs               # Core types (EntityId, ContextId, UUID)
+│   ├── cdm-macro/           # Procedural macro for CDM reference() generation
+│   └── math/                # Math utilities (RunningAverage)
+├── systems/                 # System contracts
+│   ├── registries/
+│   │   ├── contexts/        # Context registry contract
+│   │   └── contracts/       # Contract registry (CDM bootstrap)
+│   ├── reputation/          # Reputation contract
+│   ├── disputes/            # Disputes contract
+│   └── entity_graph/        # Entity graph contract
+└── packages/
+    └── cdm-cli/             # TypeScript CLI for deployment
+
+examples/
+├── market-api/              # Example contract using all systems
+└── system-basic/
+```
+
+### CDM (Contract Deployment Manager)
+
+CDM enables dynamic contract address resolution at runtime, eliminating hardcoded addresses.
+
+**How it works:**
+1. **ContractRegistry** is deployed first (bootstrap - no CDM macro)
+2. Set `CONTRACTS_REGISTRY_ADDR` env var with the deployed address
+3. Rebuild all other contracts with the registry address baked in
+4. Deploy contracts in dependency order; each registers itself in the registry
+5. At runtime, contracts call `module::reference()` to look up addresses
+
+**The `#[cdm("...")]` macro:**
+```rust
+#[cdm("@polkadot/reputation")]
+#[ink::contract]
+mod reputation {
+    #[ink(storage)]
+    pub struct Reputation { ... }
+}
+
+// Generates (when ink-as-dependency feature enabled):
+pub fn reference() -> reputation::ReputationRef {
+    // Looks up address from contracts registry at runtime
+}
+```
 
 ### System Contracts
 
-**registries/contexts** (ContextRegistry) - Shared context ownership registry. Contexts are owned by addresses (typically contracts). Provides `register_context`, `get_owner`, and `is_owner` functions. Used by reputation and disputes for ownership verification.
+**registries/contexts** (ContextRegistry) - Shared context ownership registry. Contexts are owned by addresses (typically contracts). Provides `register_context`, `get_owner`, and `is_owner` functions.
 
-**registries/contracts** (ContractRegistry) - Versioned contract name registry. Owners can publish new versions under names they control. Tracks contract addresses and metadata URIs per version.
+**registries/contracts** (ContractRegistry) - CDM bootstrap contract. Versioned contract name registry. Provides `publish_latest`, `get_address`, `get_latest` functions. Root of the CDM system.
 
-**reputation** - Generic reputation storage layer. References the shared context registry for ownership checks. Context owners can submit/delete reviews on behalf of users. Reviews are keyed by `(context_id, reviewer_address, entity_id)`.
+**reputation** - Generic reputation storage layer. Context owners can submit/delete reviews on behalf of users. Reviews are keyed by `(context_id, reviewer_address, entity_id)`.
 
-**disputes** - Generic disputes system. References the shared context registry for ownership checks. Context owners can:
-- `open_dispute` - Create a dispute with claimant, against entity, and claim URI
-- `provide_judgment` - Resolve or dismiss an open dispute with resolution URI
-- `get_dispute` - View dispute details
+**disputes** - Generic disputes system. Context owners can open disputes, provide judgments. Statuses: `Open`, `Resolved`, `Dismissed`.
 
-Disputes have statuses: `Open`, `Resolved`, `Dismissed`.
-
-**entity_graph** - Stores parent-child relationships (edges) between entities. References the shared context registry for ownership checks. Context owners can:
-- `add_edge` - Create an edge from parent to child entity with optional metadata URI
-- `remove_edge` - Delete an edge between two entities
-- `has_edge` - Check if an edge exists
-- `get_edge` - Get edge details including metadata
+**entity_graph** - Stores parent-child relationships (edges) between entities. Context owners can add/remove edges with optional metadata.
 
 ### Context Architecture
 
 ```
 ┌─────────────────────┐
-│  Context Registry   │  ← Single source of truth for context ownership
-│  (registries/contexts)
+│ Contract Registry   │  ← CDM bootstrap (deployed first)
+│ (registries/contracts)
 └─────────────────────┘
          ▲
-         │ cross-contract calls (is_owner)
-    ┌────┴────┐
-    │         │
-┌───┴───┐ ┌───┴───┐
-│ Reptn │ │Dispute│
-└───────┘ └───────┘
+         │ reference() lookups
+    ┌────┴────────────┬──────────┐
+    │                 │          │
+┌───┴───┐ ┌───────┐ ┌┴────────┐ ┌┴──────┐
+│Context│ │ Reptn │ │Disputes │ │ Graph │
+│  Reg  │ └───────┘ └─────────┘ └───────┘
+└───────┘
 ```
 
-Both reputation and disputes contracts take a `context_registry` address in their constructor and verify ownership via cross-contract calls.
+All system contracts use `contexts::reference()` to verify ownership via cross-contract calls.
 
 ### Integration Pattern
 
@@ -86,28 +138,31 @@ External contracts depend on the single `dapps` crate with `ink-as-dependency` f
 dapps = { git = "...", default-features = false, features = ["ink-as-dependency"] }
 ```
 
-**Using systems (recommended):** Pre-configured references with placeholder addresses that CI/deployment replaces:
+**Using runtime references (recommended):**
 
 ```rust
-use dapps::{ContextId, systems};
+use dapps::{ContextId, disputes, entity_graph, registries, reputation};
+use dapps::reputation::ReputationRef;
 
 pub fn new(context_id: ContextId) -> Self {
-    let mut context_registry = systems::registries::contexts();
-    context_registry.register_context(context_id);
+    // Register context ownership
+    registries::contexts::reference().register_context(context_id);
 
     Self {
-        reputation: systems::reputation(),
+        reputation: reputation::reference(),
+        disputes: disputes::reference(),
+        graph: entity_graph::reference(),
         context_id,
     }
 }
 ```
 
-Available via systems:
-- `systems::registries::contexts()` → ContextRegistryRef
-- `systems::registries::contracts()` → ContractRegistryRef
-- `systems::reputation()` → ReputationRef
-- `systems::disputes()` → DisputesRef
-- `systems::entity_graph()` → EntityGraphRef
+**Available reference functions:**
+- `registries::contexts::reference()` → ContextRegistryRef
+- `registries::contracts::reference()` → ContractRegistryRef
+- `reputation::reference()` → ReputationRef
+- `disputes::reference()` → DisputesRef
+- `entity_graph::reference()` → EntityGraphRef
 
 **Core types at root level:**
 - `dapps::EntityId` - Identifier for any unique entity
@@ -119,14 +174,28 @@ Available via systems:
 use dapps::math::RunningAverage;
 ```
 
-**Manual references:** For explicit type access:
-- `dapps::registries::contexts::ContextRegistryRef`
-- `dapps::registries::contracts::ContractRegistryRef`
-- `dapps::reputation::ReputationRef`
-- `dapps::disputes::DisputesRef`
-- `dapps::entity_graph::EntityGraphRef`
-
 See `examples/market-api/contract/` for a complete example.
+
+### CDM CLI Tool
+
+Located in `src/packages/cdm-cli/`. TypeScript tool for automated contract building and deployment.
+
+**Commands:**
+- `cdm build` - Build all CDM-enabled contracts with registry address
+- `cdm deploy <url>` - Deploy and register all contracts in dependency order
+
+**Features:**
+- Automatic dependency detection via `::reference()` call analysis
+- Topological sorting for correct deployment order
+- Dry-run mode (`--dry-run`) to preview deployment plan
+- Supports WebSocket URLs and smoldot light client chainspecs
+- Configurable signers (default: Alice dev account)
+
+**Options:**
+```
+cdm build [--contracts <names...>] [--root <path>]
+cdm deploy <url> [--signer <name>] [--suri <uri>] [--skip-build] [--dry-run]
+```
 
 ### TypeScript Client
 
@@ -135,3 +204,30 @@ Uses `polkadot-api` with `@polkadot-api/sdk-ink` for type-safe contract interact
 ## ink! Version
 
 This project uses ink! 6.0.0-beta.1 with the `unstable-hostfn` feature enabled.
+
+## Zombienet Setup
+
+Tests and deployment use a zombienet setup from `../product-preview-net` with:
+- **Relay chain**: Westend-local (validators at ports 10000-10002)
+- **Asset Hub** (parachain 1000): `ws://127.0.0.1:10020` - main target for contracts
+- **Bulletin chain** (parachain 1006): `ws://127.0.0.1:10030`
+
+Contracts use the `revive` pallet on Asset Hub (not ink's standard contracts pallet).
+
+## Deployment Flow
+
+```
+1. Deploy ContractRegistry (bootstrap)
+              ↓
+2. Set CONTRACTS_REGISTRY_ADDR=<address>
+              ↓
+3. Build all contracts with registry address
+   (cdm build)
+              ↓
+4. Deploy in topological order:
+   contexts → reputation → disputes → entity_graph → [your contracts]
+              ↓
+5. Each contract registers itself via publish_latest()
+              ↓
+6. Runtime: contracts call module::reference() to resolve addresses
+```
