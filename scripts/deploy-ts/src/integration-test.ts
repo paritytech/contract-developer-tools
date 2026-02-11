@@ -12,7 +12,7 @@ import { createClient } from "polkadot-api";
 import { getWsProvider } from "polkadot-api/ws-provider/node";
 import { withPolkadotSdkCompat } from "polkadot-api/polkadot-sdk-compat";
 import { contracts } from "@polkadot-api/descriptors";
-import { createInkSdk } from "@polkadot-api/sdk-ink";
+import { createInkSdk, ss58ToEthereum } from "@polkadot-api/sdk-ink";
 import { prepare_signer } from "./utils";
 import { NODE_URL, GAS_LIMIT, STORAGE_DEPOSIT_LIMIT } from "./constants";
 import { Binary, FixedSizeBinary } from "polkadot-api";
@@ -59,9 +59,8 @@ async function main() {
     const aliceKeyring = keyring.addFromUri("//Alice");
     const aliceSS58 = aliceKeyring.address;
 
-    // Get Alice's H160 address for contract parameters
-    const alicePubkey = (signer as any).publicKey as Uint8Array;
-    const aliceH160 = new FixedSizeBinary(alicePubkey.slice(0, 20));
+    // Get Alice's H160 (Ethereum) address for contract parameters
+    const aliceH160 = ss58ToEthereum(aliceSS58).asHex();
 
     const registry = inkSdk.getContract(
         contracts.contractsRegistry,
@@ -80,20 +79,18 @@ async function main() {
     const addresses: Record<string, string> = {};
 
     for (const name of contractNames) {
-        const result = await registry.query("get_address", {
+        const result = await registry.query("getAddress", {
             origin: aliceSS58,
             data: { contract_name: name },
         });
         if (result.success) {
             const response = (result as any).value?.response;
-            const rawHex = response?.asHex?.() || "";
-            // Parse H160 response (either Option-wrapped or direct)
-            if (rawHex.startsWith("0x01") && rawHex.length >= 42) {
-                addresses[name] = "0x" + rawHex.slice(4, 44);
-            } else if (rawHex.length === 42) {
-                addresses[name] = rawHex;
-            }
-            if (addresses[name]) {
+            // Solidity ABI returns address as hex string directly
+            if (
+                response &&
+                response !== "0x0000000000000000000000000000000000000000"
+            ) {
+                addresses[name] = response.toLowerCase();
                 console.log(`  ${name}: ${addresses[name]}`);
             } else {
                 console.log(`  ${name}: NOT REGISTERED`);
@@ -120,7 +117,7 @@ async function main() {
 
     try {
         await contexts
-            .send("register_context", {
+            .send("registerContext", {
                 data: { context_id: contextId },
                 gasLimit: {
                     ref_time: GAS_LIMIT.refTime,
@@ -138,16 +135,17 @@ async function main() {
 
     // Phase 3: Verify context ownership
     console.log("\nPhase 3: Verifying context ownership...");
-    const ownerResult = await contexts.query("get_owner", {
+    const ownerResult = await contexts.query("getOwner", {
         origin: aliceSS58,
         data: { context_id: contextId },
     });
     if (ownerResult.success) {
         const response = (ownerResult as any).value?.response;
-        const rawHex = response?.asHex?.() || "";
-        if (rawHex.startsWith("0x01")) {
-            const owner = "0x" + rawHex.slice(4, 44);
-            console.log(`  Owner: ${owner}`);
+        if (
+            response &&
+            response !== "0x0000000000000000000000000000000000000000"
+        ) {
+            console.log(`  Owner: ${response}`);
         } else {
             console.log("  Owner: None (unexpected)");
         }
@@ -159,26 +157,23 @@ async function main() {
     );
     const reputation = inkSdk.getContract(contracts.reputation, reputationAddr);
     const entityId = randomEntityId();
-    const review = {
-        rating: 5,
-        comment_uri: "ipfs://test-review",
-    };
 
     console.log(
         `  Submitting review for entity: ${entityId.asHex().slice(0, 18)}...`,
     );
     console.log(
-        `  This calls reputation.submit_review() which internally calls contexts.is_owner()`,
+        `  This calls reputation.submitReview() which internally calls contexts.isOwner()`,
     );
 
     try {
         await reputation
-            .send("submit_review", {
+            .send("submitReview", {
                 data: {
                     context_id: contextId,
                     reviewer: aliceH160,
-                    review,
                     entity: entityId,
+                    rating: 5,
+                    comment_uri: "ipfs://test-review",
                 },
                 gasLimit: {
                     ref_time: GAS_LIMIT.refTime,
