@@ -13,8 +13,9 @@
         "@polkadot-labs/hdkd": "^0.0.26",
         "@polkadot-labs/hdkd-helpers": "^0.0.27",
         "@polkadot/api": "^16.5.3",
+        "@polkadot/keyring": "^14.0.1",
         "@polkadot/util": "^14.0.1",
-        "@polkadot/util-crypto": "^13.5.9",
+        "@polkadot/util-crypto": "^14.0.1",
         "polkadot-api": "^1.23.3",
         "smoldot": "^2.0.40"
     }
