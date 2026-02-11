@@ -1,58 +1,45 @@
-#![cfg_attr(not(feature = "std"), no_std, no_main)]
+#![no_main]
+#![no_std]
 
-#[cdm_macro::cdm("@polkadot/contexts")]
-#[ink::contract]
+use dapps_core::{self as _, ContextId};
+
+use pvm::storage::Mapping;
+use pvm::{Address, caller};
+use pvm_contract as pvm;
+
+#[pvm::storage]
+struct Storage {
+    context_owners: Mapping<ContextId, Address>,
+}
+
+#[pvm::contract(cdm = "@polkadot/contexts")]
 mod context_registry {
-    use dapps_core::ContextId;
-    use ink::storage::Mapping;
+    use super::*;
 
-    #[ink(storage)]
-    pub struct ContextRegistry {
-        /*
-         * Mapping of context IDs to their owners.
-         * (presumably the owner is a contract, but can be any address)
-         */
-        pub context_owners: Mapping<ContextId, Address>,
+    #[pvm::constructor]
+    pub fn new() -> Result<(), Error> {
+        Ok(())
     }
 
-    impl ContextRegistry {
-        #[ink(constructor)]
-        pub fn new() -> Self {
-            Self {
-                context_owners: Mapping::default(),
-            }
+    #[pvm::method]
+    pub fn register_context(context_id: ContextId) {
+        if !Storage::context_owners().contains(&context_id) {
+            Storage::context_owners().insert(&context_id, &caller());
         }
+    }
 
-        /**
-           Register a new context with the caller as the owner.
-        */
-        #[ink(message)]
-        pub fn register_context(&mut self, context_id: ContextId) {
-            let caller: Address = self.env().caller();
+    #[pvm::method]
+    pub fn get_owner(context_id: ContextId) -> Address {
+        Storage::context_owners()
+            .get(&context_id)
+            .unwrap_or_default()
+    }
 
-            if self.context_owners.get(&context_id).is_some() {
-                panic!("Context ID already registered");
-            }
-            self.context_owners.insert(&context_id, &caller);
-        }
-
-        /**
-           Get the owner of a context.
-        */
-        #[ink(message)]
-        pub fn get_owner(&self, context_id: ContextId) -> Option<Address> {
-            self.context_owners.get(&context_id)
-        }
-
-        /**
-           Check if an address is the owner of a context.
-        */
-        #[ink(message)]
-        pub fn is_owner(&self, context_id: ContextId, address: Address) -> bool {
-            match self.context_owners.get(&context_id) {
-                Some(owner) => owner == address,
-                None => false,
-            }
-        }
+    #[pvm::method]
+    pub fn is_owner(context_id: ContextId, address: Address) -> bool {
+        Storage::context_owners()
+            .get(&context_id)
+            .map(|owner| owner == address)
+            .unwrap_or(false)
     }
 }

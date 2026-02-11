@@ -2,7 +2,7 @@ import { detectDeploymentOrder } from "./deployment-order/index.ts";
 
 const ROOT = process.argv[2] || process.cwd();
 
-console.log("Detecting ink! contracts with CDM annotations...\n");
+console.log("Detecting pvm contracts with CDM annotations...\n");
 
 const order = detectDeploymentOrder(ROOT);
 

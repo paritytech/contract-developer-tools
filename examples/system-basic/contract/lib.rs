@@ -1,147 +1,104 @@
-#![cfg_attr(not(feature = "std"), no_std, no_main)]
+#![no_main]
+#![no_std]
 
-use ink::prelude::string::String;
-use ink::prelude::vec::Vec;
+use dapps_core as _;
 
-/// A simple item with a name and count
-#[ink::storage_item(packed)]
-#[derive(Default, Clone)]
-#[cfg_attr(feature = "std", derive(Debug))]
+use alloc::string::String;
+use pvm::storage::Mapping;
+use pvm_contract as pvm;
+
+use dapps::ContextId;
+use parity_scale_codec::{Decode, Encode};
+
+#[derive(Default, Clone, Encode, Decode, pvm::SolAbi)]
 pub struct Item {
     pub name: String,
     pub count: u32,
 }
 
-#[ink::contract]
+#[pvm::storage]
+struct Storage {
+    context_id: ContextId,
+    items: Mapping<u32, Item>,
+    next_id: u32,
+    total_items: u32,
+}
+
+#[pvm::contract]
 mod item_tracker {
     use super::*;
-    use dapps::registries::{self, contexts::ContextRegistryRef};
-    use dapps::ContextId;
-    use ink::storage::Mapping;
 
-    #[ink(storage)]
-    pub struct ItemTracker {
-        /// Reference to context registry
-        context_registry: ContextRegistryRef,
-        /// Our context ID
-        context_id: ContextId,
-        /// Items stored by ID (simple incrementing counter)
-        items: Mapping<u32, Item>,
-        /// Next item ID
-        next_id: u32,
-        /// Track all item IDs for enumeration
-        all_ids: Vec<u32>,
+    #[pvm::constructor]
+    pub fn new(context_id: ContextId) -> Result<(), Error> {
+        // Register ourselves as context owner
+        let ctx_reg = dapps::registries::contexts::cdm_reference();
+        ctx_reg.register_context(context_id).expect("context registration failed");
+
+        Storage::context_id().set(&context_id);
+        Storage::next_id().set(&1u32);
+        Storage::total_items().set(&0u32);
+
+        Ok(())
     }
 
-    #[ink(event)]
-    pub struct ItemCreated {
-        #[ink(topic)]
-        id: u32,
-        name: String,
+    /// Create a new item with the given name, returns the item ID
+    #[pvm::method]
+    pub fn create_item(name: String) -> u32 {
+        let id = Storage::next_id().get().unwrap_or(1);
+        Storage::next_id().set(&(id + 1));
+
+        let item = Item { name, count: 0 };
+        Storage::items().insert(&id, &item);
+
+        let total = Storage::total_items().get().unwrap_or(0);
+        Storage::total_items().set(&(total + 1));
+
+        id
     }
 
-    #[ink(event)]
-    pub struct ItemUpdated {
-        #[ink(topic)]
-        id: u32,
-        new_count: u32,
+    /// Increment an item's count
+    #[pvm::method]
+    pub fn increment(id: u32) {
+        if let Some(mut item) = Storage::items().get(&id) {
+            item.count = item.count.saturating_add(1);
+            Storage::items().insert(&id, &item);
+        }
     }
 
-    impl ItemTracker {
-        #[ink(constructor)]
-        pub fn new(context_id: ContextId) -> Self {
-            // Register ourselves as context owner
-            let mut context_registry = registries::contexts::reference();
-            context_registry.register_context(context_id);
-            Self {
-                context_registry,
-                context_id,
-                items: Mapping::default(),
-                next_id: 1,
-                all_ids: Vec::new(),
-            }
+    /// Decrement an item's count
+    #[pvm::method]
+    pub fn decrement(id: u32) {
+        if let Some(mut item) = Storage::items().get(&id) {
+            item.count = item.count.saturating_sub(1);
+            Storage::items().insert(&id, &item);
         }
+    }
 
-        /// Create a new item with the given name, returns the item ID
-        #[ink(message)]
-        pub fn create_item(&mut self, name: String) -> u32 {
-            let id = self.next_id;
-            self.next_id += 1;
-
-            let item = Item {
-                name: name.clone(),
-                count: 0,
-            };
-            self.items.insert(id, &item);
-            self.all_ids.push(id);
-
-            self.env().emit_event(ItemCreated { id, name });
-            id
+    /// Delete an item
+    #[pvm::method]
+    pub fn delete_item(id: u32) {
+        if Storage::items().contains(&id) {
+            Storage::items().remove(&id);
+            let total = Storage::total_items().get().unwrap_or(0);
+            Storage::total_items().set(&total.saturating_sub(1));
         }
+    }
 
-        /// Increment an item's count
-        #[ink(message)]
-        pub fn increment(&mut self, id: u32) {
-            if let Some(mut item) = self.items.get(id) {
-                item.count = item.count.saturating_add(1);
-                self.items.insert(id, &item);
-                self.env().emit_event(ItemUpdated {
-                    id,
-                    new_count: item.count,
-                });
-            } else {
-                panic!("Item not found");
-            }
-        }
+    /// Get a single item by ID
+    #[pvm::method]
+    pub fn get_item(id: u32) -> Item {
+        Storage::items().get(&id).unwrap_or_default()
+    }
 
-        /// Decrement an item's count
-        #[ink(message)]
-        pub fn decrement(&mut self, id: u32) {
-            if let Some(mut item) = self.items.get(id) {
-                item.count = item.count.saturating_sub(1);
-                self.items.insert(id, &item);
-                self.env().emit_event(ItemUpdated {
-                    id,
-                    new_count: item.count,
-                });
-            } else {
-                panic!("Item not found");
-            }
-        }
+    /// Get total number of items
+    #[pvm::method]
+    pub fn total_items() -> u32 {
+        Storage::total_items().get().unwrap_or(0)
+    }
 
-        /// Delete an item
-        #[ink(message)]
-        pub fn delete_item(&mut self, id: u32) {
-            if self.items.get(id).is_some() {
-                self.items.remove(id);
-                self.all_ids.retain(|&x| x != id);
-            } else {
-                panic!("Item not found");
-            }
-        }
-
-        /// Get a single item by ID
-        #[ink(message)]
-        pub fn get_item(&self, id: u32) -> Option<Item> {
-            self.items.get(id)
-        }
-
-        /// Get all item IDs
-        #[ink(message)]
-        pub fn get_all_ids(&self) -> Vec<u32> {
-            self.all_ids.clone()
-        }
-
-        /// Get total number of items
-        #[ink(message)]
-        pub fn total_items(&self) -> u32 {
-            self.all_ids.len() as u32
-        }
-
-        /// Get our context ID
-        #[ink(message)]
-        pub fn context_id(&self) -> ContextId {
-            self.context_id
-        }
+    /// Get our context ID
+    #[pvm::method]
+    pub fn context_id() -> ContextId {
+        Storage::context_id().get().unwrap_or([0u8; 32])
     }
 }

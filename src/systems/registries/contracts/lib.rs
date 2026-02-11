@@ -1,437 +1,141 @@
-#![cfg_attr(not(feature = "std"), no_std, no_main)]
+#![no_main]
+#![no_std]
 
-use ink::Address;
-use ink::env::BlockNumber;
-use ink::prelude::string::String;
+use dapps_core as _;
+
+use alloc::string::String;
+use parity_scale_codec::{Decode, Encode};
+use pvm::storage::Mapping;
+use pvm::{Address, caller};
+use pvm_contract as pvm;
 
 pub type Version = u32;
 
-#[ink::storage_item(packed)]
-#[derive(Default, Clone)]
+/// A published contract version in the registry.
+#[derive(Clone, Encode, Decode)]
 pub struct PublishedContract {
-    /**
-       The block number when this contract version was published
-    */
-    pub publish_block: BlockNumber,
-
-    /**
-       The address of the published contract
-    */
+    /// The address of the published contract.
     pub address: Address,
-
-    /**
-       Bulletin chain IPFS URI pointing to this contract version's metadata
-    */
+    /// Bulletin chain IPFS URI pointing to this contract version's metadata.
     pub metadata_uri: String,
 }
 
-#[ink::storage_item(packed)]
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Encode, Decode)]
 pub struct NamedContractInfo {
-    /**
-       The owner of the contract name
-    */
+    /// The owner of the contract name
     pub owner: Address,
-
-    /**
-       The number of versions published under this contract name.
-       `version_count - 1` refers to the latest published version
-    */
+    /// The number of versions published under this contract name.
+    /// `version_count - 1` refers to the latest published version
     pub version_count: Version,
 }
 
-/// Bootstrap address for the contracts registry.
-/// This is the root of the CDM system - all other contracts are resolved through this.
-///
-/// Set via the `CONTRACTS_REGISTRY_ADDR` environment variable at compile time.
-/// Example: `CONTRACTS_REGISTRY_ADDR=0x1234...abcd cargo build`
-///
-/// The deployment script handles this automatically:
-/// 1. Deploy contracts registry first
-/// 2. Set env var with the deployed address
-/// 3. Rebuild all other contracts
-pub const CONTRACTS_REGISTRY_ADDR: [u8; 20] = {
-    const fn hex(c: u8) -> u8 {
-        match c {
-            b'0'..=b'9' => c - b'0',
-            b'a'..=b'f' => c - b'a' + 10,
-            b'A'..=b'F' => c - b'A' + 10,
-            _ => panic!("Invalid hex character"),
-        }
-    }
-
-    match option_env!("CONTRACTS_REGISTRY_ADDR") {
-        // Parse the address from the env var at compile time
-        Some(s) => {
-            let b = s.as_bytes();
-            let off = if b.len() > 1 && b[0] == b'0' && (b[1] == b'x' || b[1] == b'X') {
-                2
-            } else {
-                0
-            };
-            assert!(b.len() - off == 40, "Address must be 40 hex chars");
-            let mut r = [0u8; 20];
-            let mut i = 0;
-            while i < 20 {
-                r[i] = hex(b[off + i * 2]) << 4 | hex(b[off + i * 2 + 1]);
-                i += 1;
-            }
-            r
-        }
-        None => [0u8; 20],
-    }
-};
-
-/// Get a reference to the contracts registry at the bootstrap address.
-/// This is the root of the CDM system.
-///
-/// Only available when compiled as a dependency (ink-as-dependency feature).
-#[cfg(feature = "ink-as-dependency")]
-pub fn reference() -> contract_registry::ContractRegistryRef {
-    use ink::env::call::FromAddr;
-    contract_registry::ContractRegistryRef::from_addr(CONTRACTS_REGISTRY_ADDR.into())
+#[pvm::storage]
+struct Storage {
+    /// Count of registered contract names
+    contract_name_count: u32,
+    /// Maps index to contract name (simulates StorageVec)
+    contract_name_at: Mapping<u32, String>,
+    /// Stores all published versions of named contracts where the key for
+    /// an individual versioned contract is given by `(contract_name, version)`
+    published_address: Mapping<(String, Version), Address>,
+    published_metadata_uri: Mapping<(String, Version), String>,
+    /// Stores info about each registered contract name
+    info: Mapping<String, NamedContractInfo>,
 }
 
-#[ink::contract]
+#[pvm::contract]
 mod contract_registry {
-    use super::{NamedContractInfo, PublishedContract, Version};
-    use ink::prelude::string::String;
-    use ink::storage::Mapping;
-    use ink::storage::StorageVec;
+    use super::*;
 
-    #[ink(storage)]
-    pub struct ContractRegistry {
-        /**
-           List of all registered contract names, ordered by creation time
-        */
-        pub contract_names: StorageVec<String>,
-
-        /**
-           Stores all published versions of named contracts where the key for
-           an individual versioned contract is given by `(contract_name, version)`
-        */
-        pub published_contract: Mapping<(String, Version), PublishedContract>,
-
-        /**
-           Stores info about each registered contract name
-        */
-        pub info: Mapping<String, NamedContractInfo>,
+    #[pvm::constructor]
+    pub fn new() -> Result<(), Error> {
+        Ok(())
     }
 
-    impl ContractRegistry {
-        #[ink(constructor)]
-        pub fn new() -> Self {
-            Self {
-                published_contract: Mapping::default(),
-                info: Mapping::default(),
-                contract_names: StorageVec::new(),
+    /// Publish the latest version of a contract registered under name `contract_name`
+    ///
+    /// The caller only has permission to publish a new version of `contract_name` if
+    /// either the name is available or they are already the owner of the name.
+    #[pvm::method]
+    pub fn publish_latest(
+        contract_name: String,
+        contract_address: Address,
+        metadata_uri: String,
+    ) {
+        let caller = caller();
+
+        // Get existing info or register new `contract_name` with caller as owner
+        let mut info = match Storage::info().get(&contract_name) {
+            Some(info) => info,
+            None => {
+                let info = NamedContractInfo {
+                    owner: caller,
+                    version_count: 0,
+                };
+                // Append to contract names list
+                let count = Storage::contract_name_count().get().unwrap_or(0);
+                Storage::contract_name_at().insert(&count, &contract_name);
+                Storage::contract_name_count().set(&(count + 1));
+                info
             }
+        };
+
+        // Abort if not owner
+        if info.owner != caller {
+            return;
         }
 
-        /**
-           Publish the latest version of a contract registered under name `contract_name`
+        // Increment version count & save info
+        info.version_count = info
+            .version_count
+            .checked_add(1)
+            .expect("publish_latest: version_count overflow");
+        Storage::info().insert(&contract_name, &info);
 
-           The caller only has permission to publish a new version of `contract_name` if
-           either the name is available or they are already the owner of the name.
-        */
-        #[ink(message)]
-        pub fn publish_latest(
-            &mut self,
-            contract_name: String,
-            contract_address: Address,
-            metadata_uri: String,
-        ) {
-            let caller = self.env().caller();
+        // Store published contract data at latest version index
+        let version_idx = info.version_count.saturating_sub(1);
+        Storage::published_address().insert(
+            &(contract_name.clone(), version_idx),
+            &contract_address,
+        );
+        Storage::published_metadata_uri().insert(
+            &(contract_name, version_idx),
+            &metadata_uri,
+        );
+    }
 
-            // Get existing info or register new `contract_name` with caller as owner
-            let mut info = match self.info.get(&contract_name) {
-                Some(info) => info,
-                None => {
-                    let info = NamedContractInfo {
-                        owner: caller,
-                        version_count: 0,
-                    };
-                    self.contract_names.push(&contract_name);
-                    info
-                }
-            };
-
-            // Abort if not owner
-            if info.owner != caller {
-                return;
-            }
-
-            // Increment version count & save info
-            info.version_count = info
-                .version_count
-                .checked_add(1)
-                .expect("publish_latest: version_count overflow");
-            self.info.insert(&contract_name, &info);
-
-            // Create new `PublishedContract` & insert @ latest idx
-            let latest = PublishedContract {
-                publish_block: self.env().block_number(),
-                address: contract_address,
-                metadata_uri,
-            };
-            self.published_contract.insert(
-                &(contract_name, info.version_count.saturating_sub(1)),
-                &latest,
-            );
-        }
-
-        /**
-           Get the latest `PublishedContract` for a given `contract_name`
-        */
-        #[ink(message)]
-        pub fn get_latest(&self, contract_name: String) -> Option<PublishedContract> {
-            let info = self.info.get(&contract_name);
-            if let Some(info) = info {
-                let latest_version = info.version_count.saturating_sub(1);
-                self.published_contract
-                    .get(&(contract_name, latest_version))
-            } else {
-                None
-            }
-        }
-
-        /**
-           Get just the address of the latest published contract for a given `contract_name`.
-           This is a convenience function for CDM runtime lookups.
-        */
-        #[ink(message)]
-        pub fn get_address(&self, contract_name: String) -> Option<Address> {
-            self.get_latest(contract_name).map(|c| c.address)
+    /// Get the address of the latest published contract for a given `contract_name`.
+    /// This is the primary function used by CDM runtime lookups.
+    #[pvm::method]
+    pub fn get_address(contract_name: String) -> Address {
+        let info = Storage::info().get(&contract_name);
+        if let Some(info) = info {
+            let latest_version = info.version_count.saturating_sub(1);
+            Storage::published_address()
+                .get(&(contract_name, latest_version))
+                .unwrap_or_default()
+        } else {
+            Address::default()
         }
     }
 
-    #[cfg(test)]
-    mod tests {
-        use super::*;
-        use ink::env::test;
-
-        fn default_accounts() -> test::DefaultAccounts {
-            test::default_accounts()
+    /// Get the metadata URI of the latest published contract for a given `contract_name`.
+    #[pvm::method]
+    pub fn get_metadata_uri(contract_name: String) -> String {
+        let info = Storage::info().get(&contract_name);
+        if let Some(info) = info {
+            let latest_version = info.version_count.saturating_sub(1);
+            Storage::published_metadata_uri()
+                .get(&(contract_name, latest_version))
+                .unwrap_or_default()
+        } else {
+            String::new()
         }
+    }
 
-        fn set_caller(caller: Address) {
-            test::set_caller(caller);
-        }
-
-        #[ink::test]
-        fn new_creates_empty_registry() {
-            let registry = ContractRegistry::new();
-            assert!(registry.get_latest(String::from("nonexistent")).is_none());
-        }
-
-        #[ink::test]
-        fn publish_latest_registers_new_contract() {
-            let accounts = default_accounts();
-            set_caller(accounts.alice);
-
-            let mut registry = ContractRegistry::new();
-            let name = String::from("my_contract");
-            let addr = accounts.bob;
-            let uri = String::from("ipfs://QmTest123");
-
-            registry.publish_latest(name.clone(), addr, uri.clone());
-
-            let latest = registry
-                .get_latest(name.clone())
-                .expect("contract should exist");
-            assert_eq!(latest.address, addr);
-            assert_eq!(latest.metadata_uri, uri);
-
-            let info = registry.info.get(&name).expect("info should exist");
-            assert_eq!(info.owner, accounts.alice);
-            assert_eq!(info.version_count, 1);
-        }
-
-        #[ink::test]
-        fn publish_latest_increments_version() {
-            let accounts = default_accounts();
-            set_caller(accounts.alice);
-
-            let mut registry = ContractRegistry::new();
-            let name = String::from("my_contract");
-
-            // Publish version 0
-            registry.publish_latest(name.clone(), accounts.bob, String::from("ipfs://v0"));
-
-            // Publish version 1
-            registry.publish_latest(name.clone(), accounts.charlie, String::from("ipfs://v1"));
-
-            // Latest should be version 1
-            let latest = registry.get_latest(name.clone()).expect("should exist");
-            assert_eq!(latest.address, accounts.charlie);
-            assert_eq!(latest.metadata_uri, String::from("ipfs://v1"));
-
-            // Version count should be 2
-            let info = registry.info.get(&name).expect("info should exist");
-            assert_eq!(info.version_count, 2);
-
-            // Version 0 should still be accessible
-            let v0 = registry
-                .published_contract
-                .get(&(name.clone(), 0))
-                .expect("v0 should exist");
-            assert_eq!(v0.address, accounts.bob);
-            assert_eq!(v0.metadata_uri, String::from("ipfs://v0"));
-        }
-
-        #[ink::test]
-        fn non_owner_cannot_publish_to_existing_name() {
-            let accounts = default_accounts();
-
-            let mut registry = ContractRegistry::new();
-            let name = String::from("my_contract");
-
-            // Alice publishes first, becoming owner
-            set_caller(accounts.alice);
-            registry.publish_latest(name.clone(), accounts.bob, String::from("ipfs://v0"));
-
-            // Bob tries to publish to the same name
-            set_caller(accounts.bob);
-            registry.publish_latest(
-                name.clone(),
-                accounts.charlie,
-                String::from("ipfs://malicious"),
-            );
-
-            // Should still be Alice's version
-            let latest = registry.get_latest(name.clone()).expect("should exist");
-            assert_eq!(latest.address, accounts.bob);
-            assert_eq!(latest.metadata_uri, String::from("ipfs://v0"));
-
-            // Version count should still be 1
-            let info = registry.info.get(&name).expect("info should exist");
-            assert_eq!(info.owner, accounts.alice);
-            assert_eq!(info.version_count, 1);
-        }
-
-        #[ink::test]
-        fn get_latest_returns_none_for_unknown_name() {
-            let registry = ContractRegistry::new();
-            assert!(registry.get_latest(String::from("unknown")).is_none());
-        }
-
-        #[ink::test]
-        fn multiple_contracts_are_independent() {
-            let accounts = default_accounts();
-            set_caller(accounts.alice);
-
-            let mut registry = ContractRegistry::new();
-
-            // Register contract A
-            registry.publish_latest(
-                String::from("contract_a"),
-                accounts.bob,
-                String::from("ipfs://a"),
-            );
-
-            // Register contract B
-            registry.publish_latest(
-                String::from("contract_b"),
-                accounts.charlie,
-                String::from("ipfs://b"),
-            );
-
-            // Both should exist independently
-            let a = registry
-                .get_latest(String::from("contract_a"))
-                .expect("a should exist");
-            let b = registry
-                .get_latest(String::from("contract_b"))
-                .expect("b should exist");
-
-            assert_eq!(a.address, accounts.bob);
-            assert_eq!(b.address, accounts.charlie);
-        }
-
-        #[ink::test]
-        fn different_owners_can_register_different_names() {
-            let accounts = default_accounts();
-            let mut registry = ContractRegistry::new();
-
-            // Alice registers contract_a
-            set_caller(accounts.alice);
-            registry.publish_latest(
-                String::from("contract_a"),
-                accounts.bob,
-                String::from("ipfs://a"),
-            );
-
-            // Bob registers contract_b
-            set_caller(accounts.bob);
-            registry.publish_latest(
-                String::from("contract_b"),
-                accounts.charlie,
-                String::from("ipfs://b"),
-            );
-
-            let info_a = registry.info.get(&String::from("contract_a")).unwrap();
-            let info_b = registry.info.get(&String::from("contract_b")).unwrap();
-
-            assert_eq!(info_a.owner, accounts.alice);
-            assert_eq!(info_b.owner, accounts.bob);
-        }
-
-        #[ink::test]
-        fn publish_block_is_recorded() {
-            let accounts = default_accounts();
-            set_caller(accounts.alice);
-
-            let mut registry = ContractRegistry::new();
-            let name = String::from("my_contract");
-
-            // Advance block number
-            test::advance_block::<ink::env::DefaultEnvironment>();
-            test::advance_block::<ink::env::DefaultEnvironment>();
-
-            registry.publish_latest(name.clone(), accounts.bob, String::from("ipfs://test"));
-
-            let latest = registry.get_latest(name).expect("should exist");
-            // Block number should be current block (2 after advancing twice from 0)
-            assert_eq!(latest.publish_block, 2);
-        }
-
-        #[ink::test]
-        fn contract_names_list_is_populated() {
-            let accounts = default_accounts();
-            set_caller(accounts.alice);
-
-            let mut registry = ContractRegistry::new();
-
-            registry.publish_latest(
-                String::from("first"),
-                accounts.bob,
-                String::from("ipfs://1"),
-            );
-            registry.publish_latest(
-                String::from("second"),
-                accounts.bob,
-                String::from("ipfs://2"),
-            );
-
-            assert_eq!(registry.contract_names.len(), 2);
-            assert_eq!(registry.contract_names.get(0), Some(String::from("first")));
-            assert_eq!(registry.contract_names.get(1), Some(String::from("second")));
-        }
-
-        #[ink::test]
-        fn publishing_new_version_does_not_add_duplicate_name() {
-            let accounts = default_accounts();
-            set_caller(accounts.alice);
-
-            let mut registry = ContractRegistry::new();
-            let name = String::from("my_contract");
-
-            // Publish twice to same name
-            registry.publish_latest(name.clone(), accounts.bob, String::from("ipfs://v0"));
-            registry.publish_latest(name.clone(), accounts.charlie, String::from("ipfs://v1"));
-
-            // Should only have one entry in contract_names
-            assert_eq!(registry.contract_names.len(), 1);
-        }
+    /// Get the number of contract names registered in the registry.
+    #[pvm::method]
+    pub fn get_contract_count() -> u32 {
+        Storage::contract_name_count().get().unwrap_or(0)
     }
 }

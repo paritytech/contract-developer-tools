@@ -1,37 +1,19 @@
 [package]
 name = "item_tracker"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 authors = ["Example"]
-
-[dependencies]
-ink = { workspace = true }
-scale = { workspace = true }
-scale-info = { workspace = true }
-dapps = { path = "../../../src", default-features = false, features = ["ink-as-dependency"] }
-
-[dev-dependencies]
-ink_e2e = { workspace = true }
 
 [lib]
 path = "lib.rs"
 
-[features]
-default = ["std"]
-std = [
-    "ink/std",
-    "scale/std",
-    "scale-info/std",
-    "dapps/std",
-]
-ink-as-dependency = []
-e2e-tests = []
+[[bin]]
+name = "item_tracker"
+path = "lib.rs"
 
-[package.metadata.ink-lang]
-abi = "ink"
-
-[lints.rust.unexpected_cfgs]
-level = "warn"
-check-cfg = [
-    'cfg(ink_abi, values("ink", "sol", "all"))'
-]
+[dependencies]
+pvm_contract = { workspace = true }
+polkavm-derive = { workspace = true }
+parity-scale-codec = { workspace = true }
+dapps = { path = "../../../src", default-features = false }
+dapps_core = { path = "../../../src/core" }

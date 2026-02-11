@@ -4,7 +4,6 @@ members = [
     "src",
     "src/core",
     "src/core/math",
-    "src/core/cdm-macro",
     "src/systems/registries",
     "src/systems/registries/contexts",
     "src/systems/registries/contracts",
@@ -14,8 +13,22 @@ members = [
     "examples/*/contract",
 ]
 
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
 [workspace.dependencies]
-ink = { version = "6.0.0-beta.1", default-features = false, features = ["unstable-hostfn"] }
-scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
-scale-info = { version = "2.6", default-features = false, features = ["derive"] }
-ink_e2e = { version = "6.0.0-beta.1" }
+pvm_contract = { path = "/home/ubuntu/cargo-pvm-contract/crates/pvm_contract" }
+parity-scale-codec = { version = "3", default-features = false, features = ["derive"] }
+polkavm-derive = "0.31"
+picoalloc = { version = "5.2", default-features = false }
+dapps_core = { path = "src/core" }
+dapps = { path = "src", default-features = false }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"
+panic = "abort"
+strip = false
+overflow-checks = false

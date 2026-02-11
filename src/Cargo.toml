@@ -6,29 +6,11 @@ authors = ["Parity Technologies"]
 description = "On-chain systems and utilities for Polkadot/Substrate"
 
 [dependencies]
-ink = { workspace = true }
-dapps_core = { path = "core", default-features = false }
+dapps_core = { path = "core" }
 registries = { path = "systems/registries", default-features = false }
 reputation = { path = "systems/reputation", default-features = false }
 disputes = { path = "systems/disputes", default-features = false }
 entity_graph = { path = "systems/entity_graph", default-features = false }
-
-[features]
-default = ["std"]
-std = [
-    "ink/std",
-    "dapps_core/std",
-    "registries/std",
-    "reputation/std",
-    "disputes/std",
-    "entity_graph/std",
-]
-ink-as-dependency = [
-    "registries/ink-as-dependency",
-    "reputation/ink-as-dependency",
-    "disputes/ink-as-dependency",
-    "entity_graph/ink-as-dependency",
-]
 
 [lib]
 path = "lib.rs"

@@ -5,11 +5,8 @@ edition = "2024"
 authors = ["Parity Technologies"]
 
 [dependencies]
-math = { path = "math", default-features = false }
-
-[features]
-default = ["std"]
-std = ["math/std"]
+math = { path = "math" }
+picoalloc = { workspace = true }
 
 [lib]
 path = "lib.rs"

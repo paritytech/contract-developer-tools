@@ -45,11 +45,11 @@ function findCargoFiles(dir: string, skipDirs: string[]): string[] {
 }
 
 /**
- * Check if a Cargo.toml indicates an ink! contract.
+ * Check if a Cargo.toml indicates a pvm contract.
  */
-function isInkContract(cargoPath: string): boolean {
+function isPvmContract(cargoPath: string): boolean {
     const content = readFileSync(cargoPath, "utf-8");
-    return content.includes("[package.metadata.ink-lang]");
+    return content.includes("pvm_contract");
 }
 
 /**
@@ -63,21 +63,19 @@ function getCrateName(cargoPath: string): string {
 
 /**
  * Parse a lib.rs file to find the CDM package name.
- * Looks for #[cdm_macro::cdm("...")] or #[cdm("...")] patterns.
+ * Looks for #[pvm::contract(cdm = "...")] patterns.
  */
 function findCdmPackage(libPath: string): string | null {
     if (!existsSync(libPath)) return null;
 
     const content = readFileSync(libPath, "utf-8");
 
-    // Match patterns like:
-    // #[cdm_macro::cdm("@polkadot/reputation")]
-    // #[cdm("@polkadot/reputation")]
-    const cdmMatch = content.match(
-        /#\[(?:cdm_macro::)?cdm\(\s*"([^"]+)"\s*\)\]/,
+    // Match pvm pattern: #[pvm::contract(cdm = "@polkadot/name")]
+    const pvmMatch = content.match(
+        /pvm::contract\s*\([^)]*cdm\s*=\s*"([^"]+)"/,
     );
 
-    return cdmMatch ? cdmMatch[1] : null;
+    return pvmMatch ? pvmMatch[1] : null;
 }
 
 /**
@@ -96,19 +94,14 @@ function findDependencies(libPath: string): string[] {
     const content = readFileSync(libPath, "utf-8");
     const deps = new Set<string>();
 
-    // Match all ::reference() call patterns
-    // Captures the module name immediately before ::reference()
-    // Examples:
-    //   contexts::reference()      -> captures "contexts"
-    //   registries::contexts::reference() -> captures "contexts"
-    //   some::deep::path::module::reference() -> captures "module"
-    const matches = content.matchAll(/(\w+)::reference\s*\(/g);
+    // Match both ::reference() and ::cdm_reference() patterns
+    const matches = content.matchAll(/(\w+)::(?:cdm_)?reference\s*\(/g);
 
     for (const match of matches) {
         const moduleName = match[1];
 
         // Exclude the contracts registry (bootstrap) and common non-contract modules
-        const excluded = ["contracts", "ink", "self", "crate", "super", "env"];
+        const excluded = ["contracts", "self", "crate", "super", "env", "pvm"];
         if (!excluded.includes(moduleName)) {
             deps.add(moduleName);
         }
@@ -118,7 +111,7 @@ function findDependencies(libPath: string): string[] {
 }
 
 /**
- * Detect all ink! contracts in a workspace and their dependencies.
+ * Detect all pvm contracts in a workspace and their dependencies.
  *
  * @param rootDir - Root directory to search
  * @param options - Detection options
@@ -133,7 +126,7 @@ export function detectContracts(
     const contracts: ContractInfo[] = [];
 
     for (const cargoPath of cargoFiles) {
-        if (!isInkContract(cargoPath)) continue;
+        if (!isPvmContract(cargoPath)) continue;
 
         const cratePath = dirname(cargoPath);
         const name = getCrateName(cargoPath);

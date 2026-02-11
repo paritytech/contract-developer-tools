@@ -4,39 +4,16 @@ version = "0.1.0"
 edition = "2024"
 authors = ["Parity Technologies"]
 
-[dependencies]
-ink = { workspace = true }
-scale = { workspace = true }
-scale-info = { workspace = true }
-dapps_core = { path = "../../core", default-features = false }
-registries = { path = "../registries", default-features = false, features = ["ink-as-dependency"] }
-contracts = { path = "../registries/contracts", default-features = false, features = ["ink-as-dependency"] }
-cdm-macro = { path = "../../core/cdm-macro" }
-
-[dev-dependencies]
-ink_e2e = { workspace = true }
-
 [lib]
 path = "lib.rs"
 
-[features]
-default = ["std"]
-std = [
-    "ink/std",
-    "scale/std",
-    "scale-info/std",
-    "dapps_core/std",
-    "registries/std",
-    "contracts/std",
-]
-ink-as-dependency = []
-e2e-tests = []
+[[bin]]
+name = "reputation"
+path = "lib.rs"
 
-[package.metadata.ink-lang]
-abi = "ink"
-
-[lints.rust.unexpected_cfgs]
-level = "warn"
-check-cfg = [
-    'cfg(ink_abi, values("ink", "sol", "all"))'
-]
+[dependencies]
+pvm_contract = { workspace = true }
+polkavm-derive = { workspace = true }
+parity-scale-codec = { workspace = true }
+dapps_core = { path = "../../core" }
+contexts = { path = "../registries/contexts", default-features = false }

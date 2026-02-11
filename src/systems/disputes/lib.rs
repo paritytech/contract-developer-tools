@@ -1,11 +1,16 @@
-#![cfg_attr(not(feature = "std"), no_std, no_main)]
+#![no_main]
+#![no_std]
 
-use dapps_core::EntityId;
-use ink::{Address, prelude::string::String};
+use dapps_core::{self as _, ContextId, EntityId};
 
-#[derive(Default, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Debug, ink::storage::traits::StorageLayout))]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
+use alloc::string::String;
+use pvm::storage::Mapping;
+use pvm::{Address, caller};
+use pvm_contract as pvm;
+
+use parity_scale_codec::{Decode, Encode};
+
+#[derive(Default, Clone, Copy, PartialEq, Eq, Encode, Decode)]
 pub enum DisputeStatus {
     #[default]
     Open,
@@ -13,138 +18,116 @@ pub enum DisputeStatus {
     Dismissed,
 }
 
-#[ink::storage_item(packed)]
-#[derive(Default, Clone)]
+#[derive(Clone, Encode, Decode)]
 pub struct Dispute {
-    pub id: EntityId,      // Unique dispute identifier (EntityId)
-    pub claimant: Address, // Who raised the dispute
-    pub against: EntityId, // What entity the dispute is against (EntityId)
-    pub claim_uri: String, // IPFS URI with claim details
-    pub status: DisputeStatus,
-    pub resolution_uri: Option<String>, // Judgment details if resolved
+    pub id: EntityId,
+    pub claimant: Address,
+    pub against: EntityId,
+    pub claim_uri: String,
+    pub status: u8,
+    pub resolution_uri: String,
 }
 
-#[cdm_macro::cdm("@polkadot/disputes")]
-#[ink::contract]
+#[pvm::storage]
+struct Storage {
+    context_registry: contexts::Reference,
+    disputes: Mapping<(ContextId, EntityId), Dispute>,
+}
+
+#[pvm::contract(cdm = "@polkadot/disputes")]
 mod disputes {
     use super::*;
-    use dapps_core::{ContextId, EntityId};
-    use ink::storage::Mapping;
-    use registries::contexts::ContextRegistryRef;
 
-    #[ink(storage)]
-    pub struct Disputes {
-        /*
-         * Reference to the deployed context registry contract
-         */
-        pub context_registry: ContextRegistryRef,
-
-        /*
-         * Store all disputes across all contexts, keyed by (context_id, dispute_id)
-         */
-        pub disputes: Mapping<(ContextId, EntityId), Dispute>,
+    #[pvm::constructor]
+    pub fn new() -> Result<(), Error> {
+        let ctx_reg = contexts::cdm_reference();
+        Storage::context_registry().set(&ctx_reg);
+        Ok(())
     }
 
-    impl Disputes {
-        #[ink(constructor)]
-        pub fn new() -> Self {
-            Self {
-                context_registry: registries::contexts::reference(),
-                disputes: Mapping::default(),
-            }
+    #[pvm::method]
+    pub fn open_dispute(
+        context_id: ContextId,
+        dispute_id: EntityId,
+        claimant: Address,
+        against: EntityId,
+        claim_uri: String,
+    ) {
+        let ctx_reg = Storage::context_registry().get().expect("not initialized");
+        let is_owner = ctx_reg
+            .is_owner(context_id, caller())
+            .expect("cross-contract call failed");
+        if !is_owner {
+            return;
         }
 
-        /**
-           Open a new dispute within a context. Only the context owner can open disputes.
-        */
-        #[ink(message)]
-        pub fn open_dispute(
-            &mut self,
-            context_id: ContextId,
-            dispute_id: EntityId,
-            claimant: Address,
-            against: EntityId,
-            claim_uri: String,
-        ) {
-            let caller: Address = self.env().caller();
-
-            if !self.context_registry.is_owner(context_id, caller) {
-                panic!("Only context owner can open disputes");
-            }
-
-            if self.disputes.get(&(context_id, dispute_id)).is_some() {
-                panic!("Dispute ID already exists in this context");
-            }
-
-            let dispute = Dispute {
-                id: dispute_id,
-                claimant,
-                against,
-                claim_uri,
-                status: DisputeStatus::Open,
-                resolution_uri: None,
-            };
-
-            self.disputes.insert(&(context_id, dispute_id), &dispute);
+        if Storage::disputes().contains(&(context_id, dispute_id)) {
+            return;
         }
 
-        #[ink(message)]
-        pub fn delete_dispute(&mut self, context_id: ContextId, dispute_id: EntityId) {
-            let caller: Address = self.env().caller();
+        let dispute = Dispute {
+            id: dispute_id,
+            claimant,
+            against,
+            claim_uri,
+            status: 0, // Open
+            resolution_uri: String::new(),
+        };
 
-            if !self.context_registry.is_owner(context_id, caller) {
-                panic!("Only context owner can delete disputes");
-            }
+        Storage::disputes().insert(&(context_id, dispute_id), &dispute);
+    }
 
-            let dispute = self
-                .disputes
-                .get(&(context_id, dispute_id))
-                .expect("Dispute not found");
-
-            if dispute.status != DisputeStatus::Dismissed {
-                panic!("Only dismissed disputes can be deleted");
-            }
-            self.disputes.remove(&(context_id, dispute_id));
+    #[pvm::method]
+    pub fn delete_dispute(context_id: ContextId, dispute_id: EntityId) {
+        let ctx_reg = Storage::context_registry().get().expect("not initialized");
+        let is_owner = ctx_reg
+            .is_owner(context_id, caller())
+            .expect("cross-contract call failed");
+        if !is_owner {
+            return;
         }
 
-        /**
-           Provide judgment on a dispute. Only the context owner can provide judgment.
-        */
-        #[ink(message)]
-        pub fn provide_judgment(
-            &mut self,
-            context_id: ContextId,
-            dispute_id: EntityId,
-            status: DisputeStatus,
-            resolution_uri: String,
-        ) {
-            let caller: Address = self.env().caller();
-
-            if !self.context_registry.is_owner(context_id, caller) {
-                panic!("Only context owner can provide judgment");
+        if let Some(dispute) = Storage::disputes().get(&(context_id, dispute_id)) {
+            if dispute.status == 2 {
+                // Only delete dismissed disputes
+                Storage::disputes().remove(&(context_id, dispute_id));
             }
+        }
+    }
 
-            let mut dispute = self
-                .disputes
-                .get(&(context_id, dispute_id))
-                .expect("Dispute not found");
+    #[pvm::method]
+    pub fn provide_judgment(
+        context_id: ContextId,
+        dispute_id: EntityId,
+        status: u8,
+        resolution_uri: String,
+    ) {
+        let ctx_reg = Storage::context_registry().get().expect("not initialized");
+        let is_owner = ctx_reg
+            .is_owner(context_id, caller())
+            .expect("cross-contract call failed");
+        if !is_owner {
+            return;
+        }
 
-            if dispute.status != DisputeStatus::Open {
-                panic!("Dispute is not open");
+        if let Some(mut dispute) = Storage::disputes().get(&(context_id, dispute_id)) {
+            if dispute.status != 0 {
+                return; // Only open disputes can be judged
             }
-
+            if status != 1 && status != 2 {
+                return; // Invalid status
+            }
             dispute.status = status;
-            dispute.resolution_uri = Some(resolution_uri);
-
-            self.disputes.insert(&(context_id, dispute_id), &dispute);
+            dispute.resolution_uri = resolution_uri;
+            Storage::disputes().insert(&(context_id, dispute_id), &dispute);
         }
+    }
 
-        /**
-           Get a dispute by context and dispute ID.
-        */
-        #[ink(message)]
-        pub fn get_dispute(&self, context_id: ContextId, dispute_id: EntityId) -> Option<Dispute> {
-            self.disputes.get(&(context_id, dispute_id))
-        }
+    #[pvm::method]
+    pub fn get_dispute_status(context_id: ContextId, dispute_id: EntityId) -> u8 {
+        Storage::disputes()
+            .get(&(context_id, dispute_id))
+            .map(|d| d.status)
+            .unwrap_or(255) // 255 = not found
     }
 }

@@ -54,7 +54,7 @@ async function main() {
     const inkSdk = createInkSdk(client);
     const signer = prepare_signer("Alice");
 
-    // Get Alice's SS58 address for queries (papi ink SDK requires SS58 for origin)
+    // Get Alice's SS58 address for queries (papi SDK requires SS58 for origin)
     const keyring = new Keyring({ type: "sr25519" });
     const aliceKeyring = keyring.addFromUri("//Alice");
     const aliceSS58 = aliceKeyring.address;

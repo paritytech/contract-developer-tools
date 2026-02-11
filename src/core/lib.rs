@@ -1,4 +1,8 @@
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
+
+extern crate alloc;
+
+mod allocator;
 
 /// A universally unique identifier (UUID) represented as a 32-byte array.
 pub type UUID = [u8; 32];

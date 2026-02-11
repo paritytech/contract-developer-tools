@@ -5,13 +5,7 @@ edition = "2024"
 authors = ["Parity Technologies"]
 
 [dependencies]
-ink = { workspace = true }
-scale = { workspace = true }
-scale-info = { workspace = true, optional = true }
-
-[features]
-default = ["std"]
-std = ["ink/std", "scale/std", "scale-info/std"]
+parity-scale-codec = { workspace = true }
 
 [lib]
 path = "lib.rs"

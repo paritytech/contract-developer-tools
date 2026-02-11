@@ -52,7 +52,7 @@ async function submitTx(
 }
 
 async function deploy(crateName: string): Promise<string> {
-    const path = resolve(ROOT, `target/ink/${crateName}/${crateName}.contract`);
+    const path = resolve(ROOT, `target/pvm/${crateName}/${crateName}.contract`);
     if (!existsSync(path)) {
         throw new Error(
             `Contract not built: ${path}\nRun 'bash scripts/build.sh' first.`,
@@ -95,7 +95,7 @@ async function registerInRegistry(
     // Load the contracts registry ABI to get the selector for publish_latest
     const path = resolve(
         ROOT,
-        `target/ink/${CONTRACTS_REGISTRY_CRATE}/${CONTRACTS_REGISTRY_CRATE}.contract`,
+        `target/pvm/${CONTRACTS_REGISTRY_CRATE}/${CONTRACTS_REGISTRY_CRATE}.contract`,
     );
     const contract = JSON.parse(readFileSync(path, "utf-8"));
 
@@ -227,7 +227,7 @@ function rebuildContractsWithRegistryAddr(
             throw new Error(`Could not find crate path for ${crateName}`);
         }
 
-        execSync(`pop build ${cratePath}`, {
+        execSync(`cargo build --release -p ${crateName}`, {
             cwd: ROOT,
             stdio: "inherit",
             env: {

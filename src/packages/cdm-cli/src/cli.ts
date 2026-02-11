@@ -7,7 +7,7 @@ const program = new Command();
 
 program
     .name("cdm")
-    .description("Contract Deployment Manager for ink! smart contracts")
+    .description("Contract Deployment Manager for pvm smart contracts")
     .version("0.1.0");
 
 program.addCommand(buildCommand);

@@ -1,11 +1,8 @@
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 
-#[derive(Default, Clone)]
-#[cfg_attr(
-    feature = "std",
-    derive(Debug, PartialEq, Eq, ink::storage::traits::StorageLayout)
-)]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
+use parity_scale_codec::{Encode, Decode};
+
+#[derive(Default, Clone, Encode, Decode)]
 pub struct RunningAverage {
     sum: u64,
     total: u64,

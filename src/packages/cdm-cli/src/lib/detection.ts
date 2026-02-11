@@ -54,11 +54,11 @@ function findCargoFiles(dir: string, skipDirs: string[]): string[] {
 }
 
 /**
- * Check if a Cargo.toml indicates an ink! contract.
+ * Check if a Cargo.toml indicates a pvm contract (has pvm_contract dependency).
  */
-function isInkContract(cargoPath: string): boolean {
+function isPvmContract(cargoPath: string): boolean {
     const content = readFileSync(cargoPath, "utf-8");
-    return content.includes("[package.metadata.ink-lang]");
+    return content.includes("pvm_contract");
 }
 
 /**
@@ -71,13 +71,38 @@ function getCrateName(cargoPath: string): string {
 }
 
 /**
+ * Find the lib.rs source file for a contract crate.
+ * Checks both `lib.rs` (flat layout) and `src/lib.rs` (standard layout).
+ */
+function findLibRs(cratePath: string): string | null {
+    const candidates = [
+        join(cratePath, "lib.rs"),
+        join(cratePath, "src", "lib.rs"),
+    ];
+    for (const candidate of candidates) {
+        if (existsSync(candidate)) return candidate;
+    }
+    return null;
+}
+
+/**
  * Parse a lib.rs file to find the CDM package name.
- * Looks for #[cdm_macro::cdm("...")] or #[cdm("...")] patterns.
+ * Looks for:
+ *   - #[pvm::contract(cdm = "...")] (new pvm pattern)
+ *   - #[cdm_macro::cdm("...")] or #[cdm("...")] (legacy pattern)
  */
 function findCdmPackage(libPath: string): string | null {
     if (!existsSync(libPath)) return null;
 
     const content = readFileSync(libPath, "utf-8");
+
+    // New pvm pattern: #[pvm::contract(cdm = "@polkadot/name")]
+    const pvmMatch = content.match(
+        /pvm::contract\s*\([^)]*cdm\s*=\s*"([^"]+)"/,
+    );
+    if (pvmMatch) return pvmMatch[1];
+
+    // Legacy pattern: #[cdm_macro::cdm("@polkadot/name")] or #[cdm("@polkadot/name")]
     const cdmMatch = content.match(
         /#\[(?:cdm_macro::)?cdm\(\s*"([^"]+)"\s*\)\]/,
     );
@@ -86,7 +111,7 @@ function findCdmPackage(libPath: string): string | null {
 }
 
 /**
- * Parse a lib.rs file to find runtime dependencies via ::reference() calls.
+ * Parse a lib.rs file to find runtime dependencies via ::reference() or ::cdm_reference() calls.
  */
 function findDependencies(libPath: string): string[] {
     if (!existsSync(libPath)) return [];
@@ -94,11 +119,12 @@ function findDependencies(libPath: string): string[] {
     const content = readFileSync(libPath, "utf-8");
     const deps = new Set<string>();
 
-    const matches = content.matchAll(/(\w+)::reference\s*\(/g);
+    // Match both ::reference() and ::cdm_reference() patterns
+    const matches = content.matchAll(/(\w+)::(?:cdm_)?reference\s*\(/g);
 
     for (const match of matches) {
         const moduleName = match[1];
-        const excluded = ["contracts", "ink", "self", "crate", "super", "env"];
+        const excluded = ["contracts", "ink", "self", "crate", "super", "env", "pvm"];
         if (!excluded.includes(moduleName)) {
             deps.add(moduleName);
         }
@@ -108,7 +134,7 @@ function findDependencies(libPath: string): string[] {
 }
 
 /**
- * Detect all ink! contracts in a workspace and their dependencies.
+ * Detect all pvm contracts in a workspace and their dependencies.
  */
 export function detectContracts(
     rootDir: string,
@@ -119,12 +145,14 @@ export function detectContracts(
     const contracts: ContractInfo[] = [];
 
     for (const cargoPath of cargoFiles) {
-        if (!isInkContract(cargoPath)) continue;
+        if (!isPvmContract(cargoPath)) continue;
 
         const cratePath = dirname(cargoPath);
         const name = getCrateName(cargoPath);
 
-        const libPath = join(cratePath, "lib.rs");
+        const libPath = findLibRs(cratePath);
+        if (!libPath) continue;
+
         const cdmPackage = findCdmPackage(libPath);
 
         if (opts.cdmOnly && !cdmPackage) continue;

@@ -37,7 +37,7 @@ function loadAddresses(): Record<string, string> {
     return addresses;
 }
 
-// Convert SS58 address to 20-byte FixedSizeBinary for ink! contracts
+// Convert SS58 address to 20-byte FixedSizeBinary for pvm contracts
 function ss58ToAddress20(ss58: string): FixedSizeBinary<20> {
     const decoded = decodeAddress(ss58);
     // Take the first 20 bytes for EVM-compatible address

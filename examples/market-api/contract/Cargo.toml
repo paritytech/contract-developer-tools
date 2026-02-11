@@ -4,27 +4,18 @@ version = "0.1.0"
 edition = "2024"
 authors = ["Parity Technologies"]
 
-[dependencies]
-ink = { version = "6.0.0-beta.1", default-features = false, features = ["unstable-hostfn"] }
-scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
-scale-info = { version = "2.6", default-features = false, features = ["derive"] }
-
-# Single dependency for all on-chain systems and utilities
-dapps = { path = "../../../src", default-features = false, features = ["ink-as-dependency"] }
-# For production, use git:
-# dapps = { git = "https://github.com/parity-builders/contract-tools.git", default-features = false, features = ["ink-as-dependency"] }
-
 [lib]
 path = "lib.rs"
 
-[features]
-default = ["std"]
-std = [
-    "ink/std",
-    "scale/std",
-    "scale-info/std",
-    "dapps/std",
-]
+[[bin]]
+name = "market-api"
+path = "lib.rs"
 
-[package.metadata.ink-lang]
-abi = "ink"
+[dependencies]
+pvm_contract = { workspace = true }
+polkavm-derive = { workspace = true }
+parity-scale-codec = { workspace = true }
+
+# Single dependency for all on-chain systems and utilities
+dapps = { path = "../../../src", default-features = false }
+dapps_core = { path = "../../../src/core" }

@@ -98,7 +98,7 @@ class ContractDeployer {
     }
 
     /**
-     * Register a contract in the contracts registry via ink SDK.
+     * Register a contract in the contracts registry via papi SDK.
      */
     async register(
         cdmPackage: string,
@@ -207,7 +207,7 @@ function build_all_contracts(registryAddr: string): void {
             throw new Error(`Could not find crate path for ${crateName}`);
         }
         console.log(`  Building ${crateName}...`);
-        execSync(`pop build ${cratePath}`, {
+        execSync(`cargo build --release -p ${crateName}`, {
             cwd: ROOT,
             stdio: "inherit",
             env: { ...process.env, CONTRACTS_REGISTRY_ADDR: registryAddr },
@@ -220,7 +220,7 @@ function build_all_contracts(registryAddr: string): void {
  * Deploy the contracts registry and return its address.
  */
 async function deploy_contract_registry(deployer: ContractDeployer): Promise<string> {
-    const contractPath = resolve(ROOT, `target/ink/${CONTRACTS_REGISTRY_CRATE}/${CONTRACTS_REGISTRY_CRATE}.contract`);
+    const contractPath = resolve(ROOT, `target/pvm/${CONTRACTS_REGISTRY_CRATE}/${CONTRACTS_REGISTRY_CRATE}.contract`);
     if (!existsSync(contractPath)) {
         throw new Error(`Contracts registry not built: ${contractPath}`);
     }
@@ -240,7 +240,7 @@ async function deploy_all_contracts(deployer: ContractDeployer): Promise<void> {
     for (let i = 0; i < order.crateNames.length; i++) {
         const crateName = order.crateNames[i];
         const cdmPackage = order.cdmPackages[i];
-        const contractPath = resolve(ROOT, `target/ink/${crateName}/${crateName}.contract`);
+        const contractPath = resolve(ROOT, `target/pvm/${crateName}/${crateName}.contract`);
 
         const addr = await deployer.deploy(contractPath);
         deployer.lastDeployedAddr = addr;

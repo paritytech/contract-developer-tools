@@ -1,83 +1,77 @@
-#![cfg_attr(not(feature = "std"), no_std, no_main)]
+#![no_main]
+#![no_std]
 
-use ink::prelude::string::String;
+use dapps_core::{self as _, ContextId, EntityId};
 
-#[ink::storage_item(packed)]
-#[derive(Default, Clone)]
+use alloc::string::String;
+use pvm_contract as pvm;
+use pvm_contract::storage::Mapping;
+use pvm_contract::{Address, caller};
+
+use parity_scale_codec::{Decode, Encode};
+
+#[derive(Default, Clone, Encode, Decode)]
 pub struct Review {
     pub rating: u8,
     pub comment_uri: String,
 }
 
-#[cdm_macro::cdm("@polkadot/reputation")]
-#[ink::contract]
+#[pvm::storage]
+struct Storage {
+    context_registry: contexts::Reference,
+    reviews: Mapping<(ContextId, Address, EntityId), Review>,
+}
+
+#[pvm::contract(cdm = "@polkadot/reputation")]
 mod reputation {
     use super::*;
-    use dapps_core::{ContextId, EntityId};
-    use ink::storage::Mapping;
-    use registries::contexts::ContextRegistryRef;
 
-    #[ink(storage)]
-    pub struct Reputation {
-        /*
-         * Reference to the deployed context registry contract
-         */
-        pub context_registry: ContextRegistryRef,
-
-        /*
-         * Store all reviews across all contexts, where the `Address`
-         * is the reviewer, and the `EntityId` is the entity being reviewed.
-         */
-        pub reviews: Mapping<(ContextId, Address, EntityId), Review>,
+    #[pvm::constructor]
+    pub fn new() -> Result<(), Error> {
+        let ctx_reg = contexts::cdm_reference();
+        Storage::context_registry().set(&ctx_reg);
+        Ok(())
     }
 
-    impl Reputation {
-        #[ink(constructor)]
-        pub fn new() -> Self {
-            Self {
-                context_registry: registries::contexts::reference(),
-                reviews: Mapping::default(),
-            }
+    #[pvm::method]
+    pub fn submit_review(
+        context_id: ContextId,
+        reviewer: Address,
+        entity: EntityId,
+        rating: u8,
+        comment_uri: String,
+    ) {
+        let ctx_reg = Storage::context_registry().get().expect("not initialized");
+        let is_owner = ctx_reg
+            .is_owner(context_id, caller())
+            .expect("cross-contract call failed");
+        if !is_owner {
+            return;
         }
+        let review = Review {
+            rating,
+            comment_uri,
+        };
+        Storage::reviews().insert(&(context_id, reviewer, entity), &review);
+    }
 
-        /**
-           Submit a review for an entity within a context. Only the context owner can submit reviews.
-        */
-        #[ink(message)]
-        pub fn submit_review(
-            &mut self,
-            context_id: ContextId,
-            reviewer: Address,
-            review: Review,
-            entity: EntityId,
-        ) {
-            let caller: Address = self.env().caller();
-
-            if !self.context_registry.is_owner(context_id, caller) {
-                panic!("Only context owner can submit reviews");
-            }
-
-            self.reviews
-                .insert(&(context_id, reviewer, entity), &review);
+    #[pvm::method]
+    pub fn delete_review(context_id: ContextId, reviewer: Address, entity: EntityId) {
+        let ctx_reg = Storage::context_registry().get().expect("not initialized");
+        let is_owner = ctx_reg
+            .is_owner(context_id, caller())
+            .expect("cross-contract call failed");
+        if !is_owner {
+            return;
         }
+        Storage::reviews().remove(&(context_id, reviewer, entity));
+    }
 
-        /**
-           Delete a review for an entity within a context. Only the context owner can delete reviews.
-        */
-        #[ink(message)]
-        pub fn delete_review(
-            &mut self,
-            context_id: ContextId,
-            reviewer: Address,
-            entity: EntityId,
-        ) {
-            let caller: Address = self.env().caller();
-
-            if !self.context_registry.is_owner(context_id, caller) {
-                panic!("Only context owner can delete reviews");
-            }
-
-            self.reviews.remove(&(context_id, reviewer, entity));
-        }
+    #[pvm::method]
+    pub fn get_rating(context_id: ContextId, reviewer: Address, entity: EntityId) -> u8 {
+        Storage::reviews()
+            .get(&(context_id, reviewer, entity))
+            .map(|r| r.rating)
+            .unwrap_or(0)
     }
 }

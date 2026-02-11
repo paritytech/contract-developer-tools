@@ -15,8 +15,8 @@ async function main() {
 
     // Phase 1: Build contracts registry first (without registry address)
     console.log("Phase 1: Building contracts registry...");
-    execSync(`cargo contract build`, {
-        cwd: resolve(ROOT, `src/systems/registries/${CONTRACTS_REGISTRY_CRATE}`),
+    execSync(`cargo build --release -p ${CONTRACTS_REGISTRY_CRATE}`, {
+        cwd: ROOT,
         stdio: "inherit",
     });
 

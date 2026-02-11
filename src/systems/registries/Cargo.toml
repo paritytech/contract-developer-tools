@@ -6,29 +6,9 @@ authors = ["Parity Technologies"]
 description = "Re-exports registry contracts (contexts, contracts)"
 
 [dependencies]
-ink = { workspace = true }
-scale = { workspace = true }
-scale-info = { workspace = true }
-dapps_core = { path = "../../core", default-features = false }
-
-# Sub-crates
+dapps_core = { path = "../../core" }
 contexts = { path = "contexts", default-features = false }
 contracts = { path = "contracts", default-features = false }
 
 [lib]
 path = "lib.rs"
-
-[features]
-default = ["std"]
-std = [
-    "ink/std",
-    "scale/std",
-    "scale-info/std",
-    "dapps_core/std",
-    "contexts/std",
-    "contracts/std",
-]
-ink-as-dependency = [
-    "contexts/ink-as-dependency",
-    "contracts/ink-as-dependency",
-]
