@@ -1,14 +1,5 @@
-bin/
-
-Cargo.lock
-target/
-
-.papi
-node_modules/
-*lock.yaml
-*.lock
-
-dist/
 .DS_Store
 
-ppn/
+Cargo.lock
+
+target/

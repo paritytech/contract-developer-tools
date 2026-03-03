@@ -1,0 +1,23 @@
+[package]
+name = "disputes"
+version.workspace = true
+edition.workspace = true
+description = "Disputes contract - manages dispute lifecycle within contexts"
+authors.workspace = true
+homepage.workspace = true
+
+[lib]
+path = "lib.rs"
+
+[[bin]]
+name = "disputes"
+path = "lib.rs"
+
+[dependencies]
+cdm = { workspace = true }
+pvm_contract = { workspace = true }
+polkavm-derive = { workspace = true }
+parity-scale-codec = { workspace = true }
+picoalloc = { workspace = true }
+common = { path = "../../lib" }
+contexts = { path = "../contexts" }

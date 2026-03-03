@@ -1,34 +1,16 @@
 [workspace]
 resolver = "2"
-members = [
-    "src",
-    "src/core",
-    "src/core/math",
-    "src/systems/registries",
-    "src/systems/registries/contexts",
-    "src/systems/registries/contracts",
-    "src/systems/reputation",
-    "src/systems/disputes",
-    "src/systems/entity_graph",
-    "examples/*/contract",
-]
+members = ["src/contracts/*", "src/lib"]
 
 [workspace.package]
 version = "0.1.0"
+authors = ["CDM Example"]
+homepage = "https://polkadot.com/"
 edition = "2024"
 
 [workspace.dependencies]
-pvm_contract = { path = "/home/ubuntu/cargo-pvm-contract/crates/pvm_contract" }
-parity-scale-codec = { version = "3", default-features = false, features = ["derive"] }
+cdm = { git = "https://github.com/paritytech/contract-dependency-manager" }
+pvm_contract = { git = "https://github.com/paritytech/cargo-pvm-contract", branch = "charles/cdm-integration" }
 polkavm-derive = "0.31"
-picoalloc = { version = "5.2", default-features = false }
-dapps_core = { path = "src/core" }
-dapps = { path = "src", default-features = false }
-
-[profile.release]
-codegen-units = 1
-lto = true
-opt-level = "z"
-panic = "abort"
-strip = false
-overflow-checks = false
+parity-scale-codec = { version = "3.7", default-features = false, features = ["derive"] }
+picoalloc = "5.2"

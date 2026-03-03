@@ -1,49 +1,76 @@
 # Contract Developer Tools
 
-This repository is intended to organize a suite of high-level on-chain functionalities given as a collection of [ink!](https://use.ink/docs/v6) contracts & rust libraries.
+A suite of common on-chain system contracts for the Polkadot contract ecosystem, built with [cargo-pvm-contract](https://github.com/nicetomeetyou-github/cargo-pvm-contract) and managed with [CDM](https://github.com/nicetomeetyou-github/contract-dependency-manager) (Contract Dependency Manager).
 
 #### Prerequisites
 
--   [pop cli](https://onpop.io/cli/): `brew install r0gue-io/pop-cli/pop`
--   [bun](https://bun.sh/): `curl -fsSL https://bun.sh/install | bash`
--   [pnpm](https://pnpm.io/)
+- [Rust nightly](https://rustup.rs/)
+- [bun](https://bun.sh/): `curl -fsSL https://bun.sh/install | bash`
+- [cdm cli](https://github.com/nicetomeetyou-github/contract-dependency-manager)
 
-Setup the repository by running the commmand `bash scripts/setup.sh`
+## Contracts
 
-**Build**: `bash scripts/build.sh`
+### `contexts` (`@polkadot/contexts`)
+Context registry — registers and manages context ownership. A context is an on-chain namespace owned by an address, used by other contracts for access control.
 
-**Test**: `bash scripts/test.sh `
+### `reputation` (`@polkadot/reputation`)
+Reputation system — manages reviews and ratings for entities within contexts. Depends on `contexts` via CDM for ownership verification.
 
-**Deploy** _(to Paseo)_: `bash scripts/deploy.sh`
+### `disputes` (`@polkadot/disputes`)
+Dispute system — manages the lifecycle of disputes (open, judge, resolve/dismiss) within contexts. Depends on `contexts` via CDM for ownership verification.
 
-## Test Client
-
-Interact with the [contract](contexts/market/lib.rs) deployed on Paseo
-
-1. Build the contract to generate the `target` build artifact
-
-2. Inside of the `test_client` directory,
-
-```sh
-# Interact with the paseo contract
-bun src/index.ts
-
-# View storage of the paseo contract
-bun src/view.ts
+```
+reputation --depends on--> contexts <--depends on-- disputes
+                              |
+                       [context ownership]
+                    ContextId -> Address
 ```
 
-3. Edit the files to try out different parts of functionality. type hints should be available to explore available functions/storage.
+## Shared Types (`src/lib`)
 
-<br><br><br><br>
+Common types used across contracts:
+- `UUID` — 32-byte identifier (`[u8; 32]`)
+- `EntityId` — identifier for any unique entity in the system
+- `ContextId` — identifier for a context owned & controlled by an address
 
----
+## Usage
 
-### TODO
+**Build**
+```bash
+cdm build
+```
 
--   Connect to existing "market core" contract and start querying for relevant information
-    -   real `product_id`'s and `seller_id`'s.
-    -   query if/when a customer purchased a product associated with a given `product_id` & `seller_id`.
--   Connect to `PoP` (at least a some mock contract interface)
--   Build out real white-listing mechanics; ex:
-    -   is this a person
-    -   did they actually buy this product (or a product from this seller)
+**Deploy**
+```bash
+cdm deploy --bootstrap ws://localhost:9944
+```
+
+**Validate** (TypeScript)
+```bash
+bun install
+bun run start
+```
+
+## Directory Structure
+
+```
+contract-developer-tools/
+  Cargo.toml                          # Workspace root
+  cdm.json                            # CDM deployment config
+  package.json                        # TypeScript dependencies
+  src/
+    lib/                               # Shared types library (crate: common)
+      Cargo.toml
+      lib.rs
+    contracts/
+      contexts/                        # Context registry (base contract)
+        Cargo.toml
+        lib.rs
+      reputation/                      # Reputation system (depends on contexts)
+        Cargo.toml
+        lib.rs
+      disputes/                        # Dispute system (depends on contexts)
+        Cargo.toml
+        lib.rs
+    index.ts                           # TypeScript validation script
+```

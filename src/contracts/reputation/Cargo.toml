@@ -1,0 +1,23 @@
+[package]
+name = "reputation"
+version.workspace = true
+edition.workspace = true
+description = "Reputation contract - manages reviews and ratings within contexts"
+authors.workspace = true
+homepage.workspace = true
+
+[lib]
+path = "lib.rs"
+
+[[bin]]
+name = "reputation"
+path = "lib.rs"
+
+[dependencies]
+cdm = { workspace = true }
+pvm_contract = { workspace = true }
+polkavm-derive = { workspace = true }
+parity-scale-codec = { workspace = true }
+picoalloc = { workspace = true }
+common = { path = "../../lib" }
+contexts = { path = "../contexts" }
