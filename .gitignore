@@ -3,3 +3,7 @@
 Cargo.lock
 
 target/
+node_modules/
+*-lock.*
+
+.cdm/

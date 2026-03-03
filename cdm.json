@@ -13,5 +13,256 @@
       "@polkadot/disputes": "latest"
     }
   },
-  "contracts": {}
+  "contracts": {
+    "e3e86a66aadc74a1": {
+      "@polkadot/contexts": {
+        "version": 0,
+        "address": "0xE32B7921537622FA9D43576907C9a390B82B2eCd",
+        "abi": [
+          {
+            "type": "constructor",
+            "inputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "registerContext",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "getOwner",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "address"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "isOwner",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "address",
+                "type": "address"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "bool"
+              }
+            ],
+            "stateMutability": "view"
+          }
+        ],
+        "metadataCid": "bafk2bzacedkzmggehdclisfdjb7wkerzkk55fwagewam25vmigaoomqb4ybks"
+      },
+      "@polkadot/reputation": {
+        "version": 0,
+        "address": "0xFa0AA1752e6f7314EfdA72f5110d5cAE9088E831",
+        "abi": [
+          {
+            "type": "constructor",
+            "inputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "submitReview",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "reviewer",
+                "type": "address"
+              },
+              {
+                "name": "entity",
+                "type": "bytes32"
+              },
+              {
+                "name": "rating",
+                "type": "uint8"
+              },
+              {
+                "name": "comment_uri",
+                "type": "string"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "deleteReview",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "reviewer",
+                "type": "address"
+              },
+              {
+                "name": "entity",
+                "type": "bytes32"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "getRating",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "reviewer",
+                "type": "address"
+              },
+              {
+                "name": "entity",
+                "type": "bytes32"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "uint8"
+              }
+            ],
+            "stateMutability": "view"
+          }
+        ],
+        "metadataCid": "bafk2bzaceawoqx5dyqi3jjstygca43d2shcvk5icswtayqjmmaozwldywfek4"
+      },
+      "@polkadot/disputes": {
+        "version": 0,
+        "address": "0xb9B3700AB0483498c6820afd084f69f8e881D5Ac",
+        "abi": [
+          {
+            "type": "constructor",
+            "inputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "openDispute",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "dispute_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "claimant",
+                "type": "address"
+              },
+              {
+                "name": "against",
+                "type": "bytes32"
+              },
+              {
+                "name": "claim_uri",
+                "type": "string"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "deleteDispute",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "dispute_id",
+                "type": "bytes32"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "provideJudgment",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "dispute_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "status",
+                "type": "uint8"
+              },
+              {
+                "name": "resolution_uri",
+                "type": "string"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "getDisputeStatus",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "dispute_id",
+                "type": "bytes32"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "uint8"
+              }
+            ],
+            "stateMutability": "view"
+          }
+        ],
+        "metadataCid": "bafk2bzaceaefdnkiz4a2udwy4lmopcy6czxk6o7fp3eym2a4q6udzvcs2z6r4"
+      }
+    }
+  }
 }
