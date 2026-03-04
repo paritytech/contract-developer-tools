@@ -15,10 +15,16 @@ pub struct Review {
     pub comment_uri: String,
 }
 
+#[derive(pvm::SolAbi)]
+pub struct Metrics {
+    pub average: u8,
+    pub count: u64,
+}
+
 #[pvm::storage]
 struct Storage {
     context_registry: contexts::Reference,
-    average_review: Mapping<(ContextId, EntityId), math::RunningAverage>,
+    metrics: Mapping<(ContextId, EntityId), math::RunningAverage>,
     reviews: Mapping<(ContextId, Address, EntityId), Review>,
 }
 
@@ -57,11 +63,11 @@ mod reputation {
         };
         Storage::reviews().insert(&(context_id, reviewer, entity), &review);
 
-        let mut avg = Storage::average_review()
+        let mut avg = Storage::metrics()
             .get(&(context_id, entity))
             .unwrap_or_default();
         avg.update(prev_rating, Some(rating));
-        Storage::average_review().insert(&(context_id, entity), &avg);
+        Storage::metrics().insert(&(context_id, entity), &avg);
     }
 
     #[pvm::method]
@@ -74,11 +80,11 @@ mod reputation {
             revert(b"Unauthorized");
         }
         if let Some(old_review) = Storage::reviews().get(&(context_id, reviewer, entity)) {
-            let mut avg = Storage::average_review()
+            let mut avg = Storage::metrics()
                 .get(&(context_id, entity))
                 .unwrap_or_default();
             avg.update(Some(old_review.rating), None);
-            Storage::average_review().insert(&(context_id, entity), &avg);
+            Storage::metrics().insert(&(context_id, entity), &avg);
         }
         Storage::reviews().remove(&(context_id, reviewer, entity));
     }
@@ -92,10 +98,13 @@ mod reputation {
     }
 
     #[pvm::method]
-    pub fn get_average(context_id: ContextId, entity: EntityId) -> u8 {
-        Storage::average_review()
+    pub fn get_metrics(context_id: ContextId, entity: EntityId) -> Metrics {
+        Storage::metrics()
             .get(&(context_id, entity))
-            .map(|avg| avg.val())
-            .unwrap_or(0)
+            .map(|m| Metrics {
+                average: m.val(),
+                count: m.n_entries(),
+            })
+            .unwrap_or(Metrics { average: 0, count: 0 })
     }
 }
