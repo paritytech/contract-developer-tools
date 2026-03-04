@@ -9,8 +9,9 @@ use pvm_contract as pvm;
 
 use parity_scale_codec::{Decode, Encode};
 
-#[derive(Default, Clone, Encode, Decode)]
+#[derive(Default, Clone, Encode, Decode, pvm::SolAbi)]
 pub struct Review {
+    pub reviewer: Address,
     pub rating: u8,
     pub comment_uri: String,
 }
@@ -25,7 +26,8 @@ pub struct Metrics {
 struct Storage {
     context_registry: contexts::Reference,
     metrics: Mapping<(ContextId, EntityId), math::RunningAverage>,
-    reviews: Mapping<(ContextId, Address, EntityId), Review>,
+    reviews: Mapping<(ContextId, EntityId, u64), Review>,
+    address_review_index: Mapping<(ContextId, Address, EntityId), u64>,
 }
 
 #[pvm::contract(cdm = "@polkadot/reputation")]
@@ -47,26 +49,40 @@ mod reputation {
         rating: u8,
         comment_uri: String,
     ) {
-        let ctx_reg = Storage::context_registry().get().expect("not initialized");
-        let is_owner = ctx_reg
-            .is_owner(context_id, caller())
-            .expect("cross-contract call failed");
+        let ctx_reg = match Storage::context_registry().get() {
+            Some(r) => r,
+            None => revert(b"NotInitialized"),
+        };
+        let is_owner = match ctx_reg.is_owner(context_id, caller()) {
+            Ok(v) => v,
+            Err(_) => revert(b"ContextsCallFailed"),
+        };
         if !is_owner {
             revert(b"Unauthorized");
         }
-        let prev_rating = Storage::reviews()
-            .get(&(context_id, reviewer, entity))
-            .map(|r| r.rating);
-        let review = Review {
-            rating,
-            comment_uri,
-        };
-        Storage::reviews().insert(&(context_id, reviewer, entity), &review);
-
         let mut avg = Storage::metrics()
             .get(&(context_id, entity))
             .unwrap_or_default();
-        avg.update(prev_rating, Some(rating));
+
+        let index = match Storage::address_review_index().get(&(context_id, reviewer, entity)) {
+            Some(i) => {
+                let prev = Storage::reviews().get(&(context_id, entity, i)).map(|r| r.rating);
+                avg.update(prev, Some(rating));
+                i
+            }
+            None => {
+                let i = avg.n_entries();
+                avg.update(None, Some(rating));
+                Storage::address_review_index().insert(&(context_id, reviewer, entity), &i);
+                i
+            }
+        };
+
+        Storage::reviews().insert(&(context_id, entity, index), &Review {
+            reviewer,
+            rating,
+            comment_uri,
+        });
         Storage::metrics().insert(&(context_id, entity), &avg);
     }
 
@@ -79,22 +95,46 @@ mod reputation {
         if !is_owner {
             revert(b"Unauthorized");
         }
-        if let Some(old_review) = Storage::reviews().get(&(context_id, reviewer, entity)) {
+        if let Some(pos) = Storage::address_review_index().get(&(context_id, reviewer, entity)) {
+            let old_review = Storage::reviews()
+                .get(&(context_id, entity, pos))
+                .expect("index inconsistency");
+
             let mut avg = Storage::metrics()
                 .get(&(context_id, entity))
                 .unwrap_or_default();
             avg.update(Some(old_review.rating), None);
+            let last = avg.n_entries(); // count after removal
             Storage::metrics().insert(&(context_id, entity), &avg);
+
+            // Swap-and-pop
+            if pos != last {
+                let tail = Storage::reviews()
+                    .get(&(context_id, entity, last))
+                    .expect("index inconsistency");
+                Storage::address_review_index().insert(&(context_id, tail.reviewer, entity), &pos);
+                Storage::reviews().insert(&(context_id, entity, pos), &tail);
+            }
+
+            Storage::reviews().remove(&(context_id, entity, last));
+            Storage::address_review_index().remove(&(context_id, reviewer, entity));
         }
-        Storage::reviews().remove(&(context_id, reviewer, entity));
     }
 
     #[pvm::method]
     pub fn get_rating(context_id: ContextId, reviewer: Address, entity: EntityId) -> u8 {
-        Storage::reviews()
+        Storage::address_review_index()
             .get(&(context_id, reviewer, entity))
+            .and_then(|i| Storage::reviews().get(&(context_id, entity, i)))
             .map(|r| r.rating)
             .unwrap_or(0)
+    }
+
+    #[pvm::method]
+    pub fn get_review_at(context_id: ContextId, entity: EntityId, index: u64) -> Review {
+        Storage::reviews()
+            .get(&(context_id, entity, index))
+            .unwrap_or_default()
     }
 
     #[pvm::method]
