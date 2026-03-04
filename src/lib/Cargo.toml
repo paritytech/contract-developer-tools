@@ -8,3 +8,7 @@ homepage.workspace = true
 
 [lib]
 path = "lib.rs"
+
+[dependencies]
+parity-scale-codec = { workspace = true }
+pvm_contract = { workspace = true }

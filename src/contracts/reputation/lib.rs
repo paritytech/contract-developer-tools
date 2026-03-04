@@ -2,7 +2,7 @@
 #![no_std]
 
 use alloc::string::String;
-use common::{ContextId, EntityId};
+use common::{ContextId, EntityId, revert, math};
 use pvm::storage::Mapping;
 use pvm::{Address, caller};
 use pvm_contract as pvm;
@@ -18,6 +18,7 @@ pub struct Review {
 #[pvm::storage]
 struct Storage {
     context_registry: contexts::Reference,
+    average_review: Mapping<(ContextId, EntityId), math::RunningAverage>,
     reviews: Mapping<(ContextId, Address, EntityId), Review>,
 }
 
@@ -45,13 +46,22 @@ mod reputation {
             .is_owner(context_id, caller())
             .expect("cross-contract call failed");
         if !is_owner {
-            return;
+            revert(b"Unauthorized");
         }
+        let prev_rating = Storage::reviews()
+            .get(&(context_id, reviewer, entity))
+            .map(|r| r.rating);
         let review = Review {
             rating,
             comment_uri,
         };
         Storage::reviews().insert(&(context_id, reviewer, entity), &review);
+
+        let mut avg = Storage::average_review()
+            .get(&(context_id, entity))
+            .unwrap_or_default();
+        avg.update(prev_rating, Some(rating));
+        Storage::average_review().insert(&(context_id, entity), &avg);
     }
 
     #[pvm::method]
@@ -61,7 +71,14 @@ mod reputation {
             .is_owner(context_id, caller())
             .expect("cross-contract call failed");
         if !is_owner {
-            return;
+            revert(b"Unauthorized");
+        }
+        if let Some(old_review) = Storage::reviews().get(&(context_id, reviewer, entity)) {
+            let mut avg = Storage::average_review()
+                .get(&(context_id, entity))
+                .unwrap_or_default();
+            avg.update(Some(old_review.rating), None);
+            Storage::average_review().insert(&(context_id, entity), &avg);
         }
         Storage::reviews().remove(&(context_id, reviewer, entity));
     }
@@ -71,6 +88,14 @@ mod reputation {
         Storage::reviews()
             .get(&(context_id, reviewer, entity))
             .map(|r| r.rating)
+            .unwrap_or(0)
+    }
+
+    #[pvm::method]
+    pub fn get_average(context_id: ContextId, entity: EntityId) -> u8 {
+        Storage::average_review()
+            .get(&(context_id, entity))
+            .map(|avg| avg.val())
             .unwrap_or(0)
     }
 }

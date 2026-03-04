@@ -2,7 +2,7 @@
 #![no_std]
 
 use alloc::string::String;
-use common::{ContextId, EntityId};
+use common::{ContextId, EntityId, revert};
 use pvm::storage::Mapping;
 use pvm::{Address, caller};
 use pvm_contract as pvm;
@@ -49,11 +49,11 @@ mod disputes {
             .is_owner(context_id, caller())
             .expect("cross-contract call failed");
         if !is_owner {
-            return;
+            revert(b"Unauthorized");
         }
 
         if Storage::disputes().contains(&(context_id, dispute_id)) {
-            return;
+            revert(b"DisputeAlreadyExists");
         }
 
         let dispute = Dispute {
@@ -75,14 +75,14 @@ mod disputes {
             .is_owner(context_id, caller())
             .expect("cross-contract call failed");
         if !is_owner {
-            return;
+            revert(b"Unauthorized");
         }
 
-        if let Some(dispute) = Storage::disputes().get(&(context_id, dispute_id)) {
-            if dispute.status == 2 {
-                // Only delete dismissed disputes
-                Storage::disputes().remove(&(context_id, dispute_id));
-            }
+        let dispute = Storage::disputes().get(&(context_id, dispute_id));
+        match dispute {
+            None => revert(b"DisputeNotFound"),
+            Some(d) if d.status != 2 => revert(b"DisputeNotDismissed"),
+            _ => Storage::disputes().remove(&(context_id, dispute_id)),
         }
     }
 
@@ -98,20 +98,22 @@ mod disputes {
             .is_owner(context_id, caller())
             .expect("cross-contract call failed");
         if !is_owner {
-            return;
+            revert(b"Unauthorized");
         }
 
-        if let Some(mut dispute) = Storage::disputes().get(&(context_id, dispute_id)) {
-            if dispute.status != 0 {
-                return; // Only open disputes can be judged
-            }
-            if status != 1 && status != 2 {
-                return; // Invalid status
-            }
-            dispute.status = status;
-            dispute.resolution_uri = resolution_uri;
-            Storage::disputes().insert(&(context_id, dispute_id), &dispute);
+        let mut dispute = match Storage::disputes().get(&(context_id, dispute_id)) {
+            Some(d) => d,
+            None => revert(b"DisputeNotFound"),
+        };
+        if dispute.status != 0 {
+            revert(b"DisputeNotOpen");
         }
+        if status != 1 && status != 2 {
+            revert(b"InvalidStatus");
+        }
+        dispute.status = status;
+        dispute.resolution_uri = resolution_uri;
+        Storage::disputes().insert(&(context_id, dispute_id), &dispute);
     }
 
     #[pvm::method]
