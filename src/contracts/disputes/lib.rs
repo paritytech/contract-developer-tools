@@ -39,6 +39,9 @@ pub struct DisputeInfo {
     pub claimant: Address,
     pub against: EntityId,
     pub instruction_index: u32,
+    pub claim_uri: String,
+    pub counter_claim_uri: String,
+    pub resolution_uri: String,
 }
 
 #[derive(pvm::SolAbi)]
@@ -351,6 +354,9 @@ mod disputes {
                 claimant: d.claimant,
                 against: d.against,
                 instruction_index: d.instruction_index,
+                claim_uri: d.claim_uri,
+                counter_claim_uri: d.counter_claim_uri,
+                resolution_uri: d.resolution_uri,
             },
             None => revert(b"DisputeNotFound"),
         }

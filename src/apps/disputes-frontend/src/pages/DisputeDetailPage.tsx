@@ -16,6 +16,9 @@ interface DisputeDetail {
     claimant: string;
     against: string;
     instructionIndex: number;
+    claimUri: string;
+    counterClaimUri: string;
+    resolutionUri: string;
 }
 
 interface InstructionDetail {
@@ -28,6 +31,30 @@ function truncateHex(hex: string): string {
     return `${hex.slice(0, 8)}...${hex.slice(-4)}`;
 }
 
+interface ParsedMetadata {
+    description: string;
+    images: string[];
+}
+
+function resolveIpfsUrl(uri: string, gateway: string): string {
+    return uri.startsWith("ipfs://") ? `${gateway}${uri.slice(7)}` : uri;
+}
+
+function parseMetadata(text: string): ParsedMetadata {
+    try {
+        const json = JSON.parse(text);
+        if (typeof json.description === "string") {
+            return {
+                description: json.description,
+                images: Array.isArray(json.images) ? json.images : [],
+            };
+        }
+    } catch {
+        // not JSON — treat entire text as markdown
+    }
+    return { description: text, images: [] };
+}
+
 function MetadataContent({
     uri,
     ipfsGatewayUrl,
@@ -37,18 +64,18 @@ function MetadataContent({
     ipfsGatewayUrl: string;
     label: string;
 }) {
-    const [content, setContent] = useState<string | null>(null);
+    const [metadata, setMetadata] = useState<ParsedMetadata | null>(null);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (!uri) return;
         setLoading(true);
-        const url = uri.startsWith("ipfs://") ? `${ipfsGatewayUrl}${uri.slice(7)}` : uri;
+        const url = resolveIpfsUrl(uri, ipfsGatewayUrl);
 
         fetch(url)
             .then((r) => r.text())
-            .then((text) => setContent(text))
-            .catch(() => setContent(null))
+            .then((text) => setMetadata(parseMetadata(text)))
+            .catch(() => setMetadata(null))
             .finally(() => setLoading(false));
     }, [uri, ipfsGatewayUrl]);
 
@@ -65,13 +92,33 @@ function MetadataContent({
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Loading metadata...
                 </div>
-            ) : content ? (
-                <div
-                    className="markdown-preview"
-                    dangerouslySetInnerHTML={{
-                        __html: DOMPurify.sanitize(marked.parse(content) as string),
-                    }}
-                />
+            ) : metadata ? (
+                <>
+                    <div
+                        className="markdown-preview"
+                        dangerouslySetInnerHTML={{
+                            __html: DOMPurify.sanitize(marked.parse(metadata.description) as string),
+                        }}
+                    />
+                    {metadata.images.length > 0 && (
+                        <div className="mt-4 flex flex-wrap gap-3">
+                            {metadata.images.map((cid) => (
+                                <a
+                                    key={cid}
+                                    href={resolveIpfsUrl(`ipfs://${cid}`, ipfsGatewayUrl)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    <img
+                                        src={resolveIpfsUrl(`ipfs://${cid}`, ipfsGatewayUrl)}
+                                        alt="Evidence"
+                                        className="rounded-lg border border-border-strong max-h-60 object-cover"
+                                    />
+                                </a>
+                            ))}
+                        </div>
+                    )}
+                </>
             ) : (
                 <p className="text-sm text-text-tertiary font-mono break-all">{uri}</p>
             )}
@@ -117,6 +164,9 @@ export default function DisputeDetailPage() {
                 claimant: info.claimant,
                 against: info.against.asHex(),
                 instructionIndex: Number(info.instruction_index),
+                claimUri: info.claim_uri,
+                counterClaimUri: info.counter_claim_uri,
+                resolutionUri: info.resolution_uri,
             });
 
             // Fetch instruction
@@ -308,6 +358,33 @@ export default function DisputeDetailPage() {
                     uri={instruction.metadataUri}
                     ipfsGatewayUrl={ipfsGatewayUrl}
                     label={`Instruction (${instruction.votingRuleId === 0 ? "Binary" : "Range"} Vote)`}
+                />
+            )}
+
+            {/* Claimant's evidence */}
+            {dispute.claimUri && (
+                <MetadataContent
+                    uri={dispute.claimUri}
+                    ipfsGatewayUrl={ipfsGatewayUrl}
+                    label="Claimant's Evidence"
+                />
+            )}
+
+            {/* Counter-evidence */}
+            {dispute.counterClaimUri && (
+                <MetadataContent
+                    uri={dispute.counterClaimUri}
+                    ipfsGatewayUrl={ipfsGatewayUrl}
+                    label="Counter-Evidence"
+                />
+            )}
+
+            {/* Resolution */}
+            {dispute.resolutionUri && (
+                <MetadataContent
+                    uri={dispute.resolutionUri}
+                    ipfsGatewayUrl={ipfsGatewayUrl}
+                    label="Resolution"
                 />
             )}
 
