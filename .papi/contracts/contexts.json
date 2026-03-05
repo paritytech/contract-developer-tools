@@ -1,0 +1,31 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "registerContext",
+    "inputs": [{"name": "context_id", "type": "bytes32"}],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getOwner",
+    "inputs": [{"name": "context_id", "type": "bytes32"}],
+    "outputs": [{"name": "", "type": "address"}],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isOwner",
+    "inputs": [
+      {"name": "context_id", "type": "bytes32"},
+      {"name": "address", "type": "address"}
+    ],
+    "outputs": [{"name": "", "type": "bool"}],
+    "stateMutability": "view"
+  }
+]

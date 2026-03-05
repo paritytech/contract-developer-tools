@@ -47,6 +47,12 @@ pub struct InstructionInfo {
     pub voting_rule_id: u8,
 }
 
+#[derive(pvm::SolAbi)]
+pub struct DisputeRef {
+    pub context_id: ContextId,
+    pub dispute_id: EntityId,
+}
+
 #[pvm::storage]
 struct Storage {
     context_registry: contexts::Reference,
@@ -57,6 +63,10 @@ struct Storage {
 
     // Disputes — each references one instruction by index
     disputes: Mapping<(ContextId, EntityId), Dispute>,
+
+    // Global dispute index (flat, across all contexts)
+    total_dispute_count: u32,
+    dispute_at: Mapping<u32, (ContextId, EntityId)>,
 
     // Voting — one tally per dispute, one stored value per voter per dispute
     tallies: Mapping<(ContextId, EntityId), math::RunningAverage>,
@@ -205,6 +215,11 @@ mod disputes {
         };
 
         Storage::disputes().insert(&(context_id, dispute_id), &dispute);
+
+        // Append to global index
+        let idx = Storage::total_dispute_count().get().unwrap_or(0);
+        Storage::dispute_at().insert(&idx, &(context_id, dispute_id));
+        Storage::total_dispute_count().set(&(idx + 1));
     }
 
     #[pvm::method]
@@ -338,6 +353,24 @@ mod disputes {
                 instruction_index: d.instruction_index,
             },
             None => revert(b"DisputeNotFound"),
+        }
+    }
+
+    // ── Global Enumeration (Anyone) ─────────────────────────────────
+
+    #[pvm::method]
+    pub fn get_total_dispute_count() -> u32 {
+        Storage::total_dispute_count().get().unwrap_or(0)
+    }
+
+    #[pvm::method]
+    pub fn get_dispute_at(index: u32) -> DisputeRef {
+        match Storage::dispute_at().get(&index) {
+            Some((context_id, dispute_id)) => DisputeRef {
+                context_id,
+                dispute_id,
+            },
+            None => revert(b"IndexOutOfBounds"),
         }
     }
 

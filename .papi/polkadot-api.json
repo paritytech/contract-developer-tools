@@ -1,0 +1,19 @@
+{
+    "version": 0,
+    "descriptorPath": ".papi/descriptors",
+    "entries": {
+        "bulletin": {
+            "wsUrl": "wss://previewnet.substrate.dev/bulletin",
+            "metadata": ".papi/metadata/bulletin.scale"
+        },
+        "assethub": {
+            "wsUrl": "wss://previewnet.substrate.dev/asset-hub",
+            "metadata": ".papi/metadata/assethub.scale"
+        }
+    },
+    "sol": {
+        "disputes": ".papi/contracts/disputes.json",
+        "contractsRegistry": ".papi/contracts/contractsRegistry.json",
+        "contexts": ".papi/contracts/contexts.json"
+    }
+}

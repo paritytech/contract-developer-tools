@@ -1,0 +1,39 @@
+[
+  {
+    "type": "function",
+    "name": "getAddress",
+    "inputs": [{"name": "contract_name", "type": "string"}],
+    "outputs": [{"name": "", "type": "tuple", "components": [
+      {"name": "isSome", "type": "bool"},
+      {"name": "value", "type": "address"}
+    ]}],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getAddressAtVersion",
+    "inputs": [
+      {"name": "contract_name", "type": "string"},
+      {"name": "version", "type": "uint32"}
+    ],
+    "outputs": [{"name": "", "type": "tuple", "components": [
+      {"name": "isSome", "type": "bool"},
+      {"name": "value", "type": "address"}
+    ]}],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getVersionCount",
+    "inputs": [{"name": "contract_name", "type": "string"}],
+    "outputs": [{"name": "", "type": "uint32"}],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getContractCount",
+    "inputs": [],
+    "outputs": [{"name": "", "type": "uint32"}],
+    "stateMutability": "view"
+  }
+]

@@ -2,13 +2,21 @@
     "name": "contract-developer-tools",
     "version": "0.1.0",
     "type": "module",
+    "packageManager": "pnpm@10.17.1",
     "scripts": {
-        "start": "bun src/index.ts"
+        "start": "bun src/index.ts",
+        "dev": "turbo dev",
+        "build": "turbo build",
+        "clean": "turbo clean"
     },
     "dependencies": {
         "@dotdm/cdm": "latest",
-        "polkadot-api": "^1.23.3",
+        "@polkadot-api/descriptors": "file:.papi/descriptors",
         "@polkadot-labs/hdkd": "^0.0.26",
-        "@polkadot-labs/hdkd-helpers": "^0.0.27"
+        "@polkadot-labs/hdkd-helpers": "^0.0.27",
+        "polkadot-api": "^1.23.3"
+    },
+    "devDependencies": {
+        "turbo": "^2.3.0"
     }
 }

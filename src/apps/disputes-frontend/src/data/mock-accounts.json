@@ -1,0 +1,56 @@
+{
+    "deployedAt": "2026-03-04T16:28:20.860Z",
+    "network": "paseo",
+    "accounts": [
+        {
+            "mnemonic": "bind oval spot woman tide lucky jealous security enlist taxi assault enable",
+            "address": "5HBKzBUupPvLzRAFSwJTWPUcjJRXspNoGwHPPzYikXodfKbH",
+            "ethAddress": "0x274a5ee127ce5098954a841e49d88e63cb60f45e"
+        },
+        {
+            "mnemonic": "remember essence arrest olympic helmet lucky thumb kite end artwork basket you",
+            "address": "5EJSjBjdndamn4sun8K5jLs637VR1k3wNWSgwc4nWKCKhZck",
+            "ethAddress": "0xc532481279dbf3950267dc1d334edaf750fe9aff"
+        },
+        {
+            "mnemonic": "shoot wrist slide hole pull clip magic shiver egg coin coin genuine",
+            "address": "5GgLD1aLPpj1i5AroVnXzQK1y632rsPAK1WFemBimec6ugqG",
+            "ethAddress": "0x21e42faaca18649f384193634054a338e38702f9"
+        },
+        {
+            "mnemonic": "immense dance what edge film culture tip mimic know merry arrange boat",
+            "address": "5CFU4tAYLUQ7DfGgTmh7BxFdNebkkcTkDaTKbT57W428yKDL",
+            "ethAddress": "0xf7e7729bf35053399bf2047ff3bb4f284fc176c2"
+        },
+        {
+            "mnemonic": "acquire jazz economy provide shaft leave sign vote swallow muffin treat virus",
+            "address": "5CM9F9KaKEdRT17YQhY9WhGzRgxg6xV8qqxzazmKz9gLMx9H",
+            "ethAddress": "0x97951e09d4e44c02e67253d4fb1dec3f50e7520b"
+        },
+        {
+            "mnemonic": "verify erase chef proof robot aware horror song ill interest obtain slush",
+            "address": "5DRwCYh89YdryLr2j5ziYnxQAaiBYyaSyQpa3DxjGKnS8DzS",
+            "ethAddress": "0xae670925cf58d7ffa4a07b5dc8cb8f8573927fdb"
+        },
+        {
+            "mnemonic": "keen sustain size planet polar vessel pair dismiss endorse poverty spider wool",
+            "address": "5Dc1X28GpZUvPAAY2LP3DgkKikr8nPyUTndUZY3nCVsa4fzX",
+            "ethAddress": "0x5633a6002556e66e2a247aaf2465a5e8c4f46427"
+        },
+        {
+            "mnemonic": "mountain such neglect puppy pudding convince hen wide silent cook place arm",
+            "address": "5EP1xKkmkEvqMa6L4ttmCjyvZU6EcdZrFnsTjZkewJEX42ve",
+            "ethAddress": "0xadc1992b41e2119122104b0f75a636a8a135bfa4"
+        },
+        {
+            "mnemonic": "habit cradle canoe gift win right item decrease put fragile doll festival",
+            "address": "5Eq8VbsXVx3gfGc1jbDfdxNaq8PhmNXrp4HXSZdpQKmdQXJG",
+            "ethAddress": "0xb10e8165c75cbd5adbd2116b507b2532c5322d43"
+        },
+        {
+            "mnemonic": "mass circle other cactus price awkward coach honey fresh army pink case",
+            "address": "5EUXDwPa6LaUSuPKsHoTYuMmbpj29vuXNGGppHB4V9MgEiK1",
+            "ethAddress": "0xe4d2599e9edb10ca3fa303b741e7079626df93d2"
+        }
+    ]
+}
