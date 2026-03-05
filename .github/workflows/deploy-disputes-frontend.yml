@@ -41,7 +41,7 @@ jobs:
                   node-version: "22"
 
             - name: Install and build
-              run: pnpm install && pnpm papi generate && pnpm turbo build --filter=@polkadot/disputes-frontend
+              run: pnpm install && pnpm turbo build --filter=@polkadot/disputes-frontend
 
             - name: Upload build artifact
               uses: actions/upload-artifact@v4
