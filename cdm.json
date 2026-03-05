@@ -16,8 +16,8 @@
   "contracts": {
     "e3e86a66aadc74a1": {
       "@polkadot/contexts": {
-        "version": 0,
-        "address": "0xE32B7921537622FA9D43576907C9a390B82B2eCd",
+        "version": 7,
+        "address": "0xa03C8bfAb20282bDa86A906c483bdF4730C57244",
         "abi": [
           {
             "type": "constructor",
@@ -75,11 +75,11 @@
             "stateMutability": "view"
           }
         ],
-        "metadataCid": "bafk2bzacedkzmggehdclisfdjb7wkerzkk55fwagewam25vmigaoomqb4ybks"
+        "metadataCid": "bafk2bzacec44m7whijdmn46hwkumrqt6xx2iuvkyunwo6oaz6krtgocnaryy4"
       },
       "@polkadot/reputation": {
-        "version": 0,
-        "address": "0xFa0AA1752e6f7314EfdA72f5110d5cAE9088E831",
+        "version": 6,
+        "address": "0x6B98b743FE20A14FB40Cb947357b880FfA38F317",
         "abi": [
           {
             "type": "constructor",
@@ -158,18 +158,156 @@
               }
             ],
             "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getReviewAt",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "entity",
+                "type": "bytes32"
+              },
+              {
+                "name": "index",
+                "type": "uint64"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "tuple",
+                "components": [
+                  {
+                    "name": "reviewer",
+                    "type": "address"
+                  },
+                  {
+                    "name": "rating",
+                    "type": "uint8"
+                  },
+                  {
+                    "name": "comment_uri",
+                    "type": "string"
+                  }
+                ]
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getMetrics",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "entity",
+                "type": "bytes32"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "tuple",
+                "components": [
+                  {
+                    "name": "average",
+                    "type": "uint8"
+                  },
+                  {
+                    "name": "count",
+                    "type": "uint64"
+                  }
+                ]
+              }
+            ],
+            "stateMutability": "view"
           }
         ],
-        "metadataCid": "bafk2bzaceawoqx5dyqi3jjstygca43d2shcvk5icswtayqjmmaozwldywfek4"
+        "metadataCid": "bafk2bzacebffrc5bdu4k2m2kh55g32a4mggfpukmwaj2lo3qpdbvsqxricg74"
       },
       "@polkadot/disputes": {
-        "version": 0,
-        "address": "0xb9B3700AB0483498c6820afd084f69f8e881D5Ac",
+        "version": 7,
+        "address": "0x5B3a615c3D62a0A14c6906Ef672B7127d110E899",
         "abi": [
           {
             "type": "constructor",
             "inputs": [],
             "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "addInstruction",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "metadata_uri",
+                "type": "string"
+              },
+              {
+                "name": "voting_rule_id",
+                "type": "uint8"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "getInstructionCount",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "uint32"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getInstruction",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "index",
+                "type": "uint32"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "tuple",
+                "components": [
+                  {
+                    "name": "metadata_uri",
+                    "type": "string"
+                  },
+                  {
+                    "name": "voting_rule_id",
+                    "type": "uint8"
+                  }
+                ]
+              }
+            ],
+            "stateMutability": "view"
           },
           {
             "type": "function",
@@ -194,6 +332,10 @@
               {
                 "name": "claim_uri",
                 "type": "string"
+              },
+              {
+                "name": "instruction_index",
+                "type": "uint32"
               }
             ],
             "outputs": [],
@@ -201,7 +343,27 @@
           },
           {
             "type": "function",
-            "name": "deleteDispute",
+            "name": "submitCounterEvidence",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "dispute_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "counter_claim_uri",
+                "type": "string"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "beginVoting",
             "inputs": [
               {
                 "name": "context_id",
@@ -228,12 +390,32 @@
                 "type": "bytes32"
               },
               {
-                "name": "status",
+                "name": "decision",
                 "type": "uint8"
               },
               {
                 "name": "resolution_uri",
                 "type": "string"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "castVote",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "dispute_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "value",
+                "type": "uint8"
               }
             ],
             "outputs": [],
@@ -259,9 +441,149 @@
               }
             ],
             "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getDecision",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "dispute_id",
+                "type": "bytes32"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "uint8"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getVoteCount",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "dispute_id",
+                "type": "bytes32"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "uint32"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getDisputeInfo",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "dispute_id",
+                "type": "bytes32"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "tuple",
+                "components": [
+                  {
+                    "name": "status",
+                    "type": "uint8"
+                  },
+                  {
+                    "name": "vote_count",
+                    "type": "uint32"
+                  },
+                  {
+                    "name": "claimant",
+                    "type": "address"
+                  },
+                  {
+                    "name": "against",
+                    "type": "bytes32"
+                  },
+                  {
+                    "name": "instruction_index",
+                    "type": "uint32"
+                  }
+                ]
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getTotalDisputeCount",
+            "inputs": [],
+            "outputs": [
+              {
+                "name": "",
+                "type": "uint32"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getDisputeAt",
+            "inputs": [
+              {
+                "name": "index",
+                "type": "uint32"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "tuple",
+                "components": [
+                  {
+                    "name": "context_id",
+                    "type": "bytes32"
+                  },
+                  {
+                    "name": "dispute_id",
+                    "type": "bytes32"
+                  }
+                ]
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "deleteDispute",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "dispute_id",
+                "type": "bytes32"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
           }
         ],
-        "metadataCid": "bafk2bzaceaefdnkiz4a2udwy4lmopcy6czxk6o7fp3eym2a4q6udzvcs2z6r4"
+        "metadataCid": "bafk2bzacecbz5azlc7hyo5rrhjapdrxz46o2wh423y5vtqeu6fua6behknu6w"
       }
     }
   }

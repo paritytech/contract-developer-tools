@@ -10,8 +10,6 @@
         "clean": "rm -rf dist"
     },
     "dependencies": {
-        "@dotdm/env": "latest",
-        "@dotdm/utils": "latest",
         "@novasamatech/product-sdk": "^0.6.5",
         "@polkadot-api/descriptors": "file:../../../.papi/descriptors",
         "@polkadot-api/sdk-ink": "^0.6.2",

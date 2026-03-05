@@ -14,7 +14,6 @@ import {
     assethub as assethubDescriptor,
 } from "@polkadot-api/descriptors";
 import { createInkSdk, type ContractSdk } from "@polkadot-api/sdk-ink";
-import { KNOWN_CHAINS, type ChainPreset } from "@dotdm/env";
 import {
     deriveWallet,
     getAliceAddress,
@@ -32,27 +31,44 @@ import {
 } from "../lib/host/index.ts";
 
 // ---------------------------------------------------------------------------
-// Network presets — extend KNOWN_CHAINS with token metadata
+// Network presets
 // ---------------------------------------------------------------------------
 
-interface DisputesNetworkPreset extends ChainPreset {
+interface NetworkPreset {
+    assethubUrl: string | string[];
+    bulletinUrl: string;
+    ipfsGatewayUrl: string;
+    registryAddress: string;
     tokenSymbol: string;
     tokenDecimals: number;
 }
 
-const NETWORK_PRESETS: Record<string, DisputesNetworkPreset> = {
+const NETWORK_PRESETS: Record<string, NetworkPreset> = {
     "preview-net": {
-        ...KNOWN_CHAINS["preview-net"],
+        assethubUrl: "wss://previewnet.substrate.dev/asset-hub",
+        bulletinUrl: "wss://previewnet.substrate.dev/bulletin",
+        ipfsGatewayUrl: "https://previewnet.substrate.dev/ipfs/",
+        registryAddress: "0xcf5f4af8f99f361a620fffa8ed3a62742bd8876d",
         tokenSymbol: "WND",
         tokenDecimals: 12,
     },
     paseo: {
-        ...KNOWN_CHAINS["paseo"],
+        assethubUrl: [
+            "wss://asset-hub-paseo-rpc.n.dwellir.com",
+            "wss://sys.ibp.network/asset-hub-paseo",
+            "wss://asset-hub-paseo.dotters.network",
+        ],
+        bulletinUrl: "wss://paseo-bulletin-rpc.polkadot.io",
+        ipfsGatewayUrl: "https://paseo-ipfs.polkadot.io/ipfs",
+        registryAddress: "0xede6d5f092de34152f8952baa99a35363ed087c0",
         tokenSymbol: "PAS",
         tokenDecimals: 10,
     },
     local: {
-        ...KNOWN_CHAINS["local"],
+        assethubUrl: "ws://127.0.0.1:10020",
+        bulletinUrl: "ws://127.0.0.1:10030",
+        ipfsGatewayUrl: "http://127.0.0.1:8080/ipfs",
+        registryAddress: "",
         tokenSymbol: "WND",
         tokenDecimals: 12,
     },
