@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Loader2, AlertCircle, User, Scale, FileText, Vote } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, User, FileText, Vote } from "lucide-react";
 import { Binary } from "polkadot-api";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
@@ -157,10 +157,10 @@ export default function DisputeDetailPage() {
 
     if (connecting || loading) {
         return (
-            <div className="max-w-4xl mx-auto px-4 py-8">
+            <div className="max-w-4xl mx-auto px-4 py-10">
                 <div className="flex items-center justify-center py-20">
-                    <Loader2 className="w-6 h-6 animate-spin text-text-tertiary" />
-                    <span className="ml-3 text-text-secondary">Loading dispute...</span>
+                    <Loader2 className="w-5 h-5 animate-spin text-accent/50" />
+                    <span className="ml-3 text-text-secondary text-sm">Loading dispute...</span>
                 </div>
             </div>
         );
@@ -168,10 +168,10 @@ export default function DisputeDetailPage() {
 
     if (error || !dispute) {
         return (
-            <div className="max-w-4xl mx-auto px-4 py-8">
+            <div className="max-w-4xl mx-auto px-4 py-10">
                 <Link
                     to="/"
-                    className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary mb-6 transition-colors"
+                    className="inline-flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary mb-6 transition-colors"
                 >
                     <ArrowLeft className="w-4 h-4" />
                     Back to disputes
@@ -187,10 +187,10 @@ export default function DisputeDetailPage() {
     const voteProgress = Math.min(dispute.voteCount / REQUIRED_VOTES, 1);
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto px-4 py-10">
             <Link
                 to="/"
-                className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary mb-6 transition-colors"
+                className="inline-flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary mb-6 transition-colors"
             >
                 <ArrowLeft className="w-4 h-4" />
                 Back to disputes
@@ -200,31 +200,28 @@ export default function DisputeDetailPage() {
             <div className="card mb-6">
                 <div className="flex items-start justify-between gap-4 mb-4">
                     <div>
-                        <h1 className="text-2xl font-serif mb-1 flex items-center gap-3">
-                            <Scale className="w-6 h-6 text-accent" />
-                            Dispute Detail
-                        </h1>
-                        <p className="text-sm text-text-tertiary font-mono" title={disputeId}>
-                            ID: {truncateHex(disputeId ?? "")}
+                        <h1 className="text-2xl font-serif mb-1">Dispute Detail</h1>
+                        <p className="text-xs text-text-tertiary font-mono" title={disputeId}>
+                            {truncateHex(disputeId ?? "")}
                         </p>
                     </div>
                     <StatusBadge status={dispute.status} />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                    <div className="bg-surface-secondary rounded-xl p-4">
-                        <div className="text-xs text-text-tertiary mb-1">Claimant</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                    <div className="bg-surface-secondary rounded-lg p-4 border-l-2 border-accent/15">
+                        <div className="text-[11px] text-text-tertiary mb-1 uppercase tracking-wider">Claimant</div>
                         <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-text-secondary" />
+                            <User className="w-4 h-4 text-text-tertiary" />
                             <span className="font-mono text-sm" title={dispute.claimant}>
                                 {truncateHex(dispute.claimant)}
                             </span>
                         </div>
                     </div>
-                    <div className="bg-surface-secondary rounded-xl p-4">
-                        <div className="text-xs text-text-tertiary mb-1">Against</div>
+                    <div className="bg-surface-secondary rounded-lg p-4 border-l-2 border-accent/15">
+                        <div className="text-[11px] text-text-tertiary mb-1 uppercase tracking-wider">Against</div>
                         <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-text-secondary" />
+                            <User className="w-4 h-4 text-text-tertiary" />
                             <span className="font-mono text-sm" title={dispute.against}>
                                 {truncateHex(dispute.against)}
                             </span>
@@ -232,16 +229,16 @@ export default function DisputeDetailPage() {
                     </div>
                 </div>
 
-                <div className="bg-surface-secondary rounded-xl p-4 mb-4">
-                    <div className="text-xs text-text-tertiary mb-1">Context</div>
+                <div className="bg-surface-secondary rounded-lg p-4 mb-4 border-l-2 border-accent/15">
+                    <div className="text-[11px] text-text-tertiary mb-1 uppercase tracking-wider">Context</div>
                     <span className="font-mono text-sm break-all">{contextId}</span>
                 </div>
 
                 <div className="flex items-center gap-3">
                     <Vote className="w-4 h-4 text-text-tertiary" />
-                    <div className="flex-1 h-2 bg-surface-secondary rounded-full overflow-hidden">
+                    <div className="flex-1 h-1.5 bg-surface-secondary rounded-full overflow-hidden">
                         <div
-                            className="h-full rounded-full transition-all duration-300"
+                            className="h-full rounded-full transition-all duration-500"
                             style={{
                                 width: `${voteProgress * 100}%`,
                                 backgroundColor:
@@ -249,8 +246,8 @@ export default function DisputeDetailPage() {
                             }}
                         />
                     </div>
-                    <span className="text-sm text-text-secondary">
-                        {dispute.voteCount}/{REQUIRED_VOTES} votes
+                    <span className="text-sm text-text-secondary font-mono tabular-nums">
+                        {dispute.voteCount}/{REQUIRED_VOTES}
                     </span>
                 </div>
             </div>
@@ -265,7 +262,7 @@ export default function DisputeDetailPage() {
                                 className={`flex flex-col items-center ${i <= dispute.status ? "text-accent" : "text-text-tertiary"}`}
                             >
                                 <div
-                                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 ${
+                                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border-2 ${
                                         i < dispute.status
                                             ? "bg-accent text-white border-accent"
                                             : i === dispute.status
@@ -275,11 +272,11 @@ export default function DisputeDetailPage() {
                                 >
                                     {i < dispute.status ? "\u2713" : i + 1}
                                 </div>
-                                <span className="text-xs mt-1">{label}</span>
+                                <span className="text-xs mt-1.5 font-medium">{label}</span>
                             </div>
                             {i < 3 && (
                                 <div
-                                    className={`w-12 h-0.5 mx-1 ${i < dispute.status ? "bg-accent" : "bg-border-strong"}`}
+                                    className={`w-12 h-0.5 mx-1 rounded-full ${i < dispute.status ? "bg-accent" : "bg-border-strong"}`}
                                 />
                             )}
                         </div>
@@ -293,7 +290,7 @@ export default function DisputeDetailPage() {
                     <h3 className="text-lg font-serif mb-3">Decision</h3>
                     {instruction?.votingRuleId === 0 ? (
                         <div
-                            className={`text-lg font-semibold ${decision === 1 ? "text-green-500" : "text-red-500"}`}
+                            className={`text-lg font-semibold ${decision === 1 ? "text-emerald-500" : "text-red-500"}`}
                         >
                             {decision === 1
                                 ? "Ruled in favor of claimant"
@@ -328,9 +325,9 @@ export default function DisputeDetailPage() {
 
             {dispute.status < 2 && (
                 <div className="card text-center py-8">
-                    <p className="text-text-secondary">
+                    <p className="text-text-secondary text-sm">
                         Voting has not started yet. Current status:{" "}
-                        <strong>{statusLabel(dispute.status)}</strong>.
+                        <strong className="text-text-primary">{statusLabel(dispute.status)}</strong>.
                     </p>
                 </div>
             )}

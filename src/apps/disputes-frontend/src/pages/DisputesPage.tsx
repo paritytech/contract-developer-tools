@@ -132,54 +132,54 @@ export default function DisputesPage() {
     }, [loadMore, loading]);
 
     return (
-        <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto px-4 py-10">
             <div className="mb-8">
-                <h1 className="text-3xl font-serif mb-2 flex items-center gap-3">
-                    <Scale className="w-8 h-8 text-accent" />
-                    Disputes
-                </h1>
-                <p className="text-text-secondary">
+                <h1 className="text-3xl font-serif mb-2">Disputes</h1>
+                <p className="text-text-secondary text-sm">
                     Browse and vote on open disputes across all applications.
                     {totalCount !== null && (
-                        <span className="text-text-tertiary"> ({totalCount} total)</span>
+                        <span className="text-text-tertiary"> · {totalCount} total</span>
                     )}
                 </p>
             </div>
 
-            <div className="flex flex-wrap gap-2 mb-6">
+            <div className="flex gap-1 mb-8 border-b border-border">
                 {STATUS_FILTERS.map(({ label, value }) => (
                     <button
                         key={value}
                         onClick={() => setStatusFilter(value)}
-                        className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                        className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
                             statusFilter === value
-                                ? "bg-text-primary text-bg"
-                                : "bg-surface-secondary text-text-secondary hover:text-text-primary"
+                                ? "text-accent"
+                                : "text-text-tertiary hover:text-text-secondary"
                         }`}
                     >
                         {label}
+                        {statusFilter === value && (
+                            <span className="absolute bottom-0 left-1 right-1 h-0.5 bg-accent rounded-full" />
+                        )}
                     </button>
                 ))}
             </div>
 
             {connecting && (
                 <div className="flex items-center justify-center py-20">
-                    <Loader2 className="w-6 h-6 animate-spin text-text-tertiary" />
-                    <span className="ml-3 text-text-secondary">Connecting to network...</span>
+                    <Loader2 className="w-5 h-5 animate-spin text-accent/50" />
+                    <span className="ml-3 text-text-secondary text-sm">Connecting to network...</span>
                 </div>
             )}
 
             {!connecting && !connected && (
                 <div className="flex flex-col items-center justify-center py-20 text-text-tertiary">
                     <AlertCircle className="w-8 h-8 mb-3" />
-                    <p>Not connected. Select a network to browse disputes.</p>
+                    <p className="text-sm">Not connected. Select a network to browse disputes.</p>
                 </div>
             )}
 
             {connected && items.length === 0 && !loading && (
                 <div className="flex flex-col items-center justify-center py-20 text-text-tertiary">
                     <Scale className="w-8 h-8 mb-3" />
-                    <p>No disputes found{statusFilter >= 0 ? " matching this filter" : ""}.</p>
+                    <p className="text-sm">No disputes found{statusFilter >= 0 ? " matching this filter" : ""}.</p>
                 </div>
             )}
 
@@ -193,7 +193,7 @@ export default function DisputesPage() {
 
             {loading && (
                 <div className="flex justify-center py-8">
-                    <Loader2 className="w-5 h-5 animate-spin text-text-tertiary" />
+                    <Loader2 className="w-5 h-5 animate-spin text-accent/50" />
                 </div>
             )}
         </div>

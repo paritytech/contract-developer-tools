@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Sun, Moon, Wifi, WifiOff, Loader2, ChevronDown } from "lucide-react";
+import { Sun, Moon, Wifi, WifiOff, Loader2, ChevronDown, Scale } from "lucide-react";
 import { useTheme } from "../context/ThemeContext.tsx";
 import { useNetwork, NETWORK_PRESETS, mockAccounts } from "../context/NetworkContext.tsx";
 
@@ -30,31 +30,34 @@ export default function Navbar() {
     const [accountOpen, setAccountOpen] = useState(false);
 
     return (
-        <nav className="sticky top-0 z-30 bg-surface/80 backdrop-blur-md border-b border-border">
+        <nav className="sticky top-0 z-30 bg-surface/80 backdrop-blur-md">
             <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-                <Link to="/" className="flex items-center gap-2 font-semibold text-text-primary shrink-0">
-                    <span className="text-lg font-serif">Disputes</span>
+                <Link to="/" className="flex items-center gap-2.5 shrink-0">
+                    <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center">
+                        <Scale className="w-4 h-4 text-accent" />
+                    </div>
+                    <span className="text-lg font-serif font-semibold text-text-primary tracking-tight">Disputes</span>
                 </Link>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                     {/* Network selector */}
                     <div className="relative">
                         <button
                             onClick={() => { setNetworkOpen(!networkOpen); setAccountOpen(false); }}
-                            className="btn-ghost flex items-center gap-2 text-sm"
+                            className="btn-ghost flex items-center gap-2"
                         >
                             {connecting ? (
                                 <Loader2 className="w-3.5 h-3.5 animate-spin text-text-tertiary" />
                             ) : connected ? (
-                                <Wifi className="w-3.5 h-3.5 text-green-500" />
+                                <Wifi className="w-3.5 h-3.5 text-emerald-500" />
                             ) : (
                                 <WifiOff className="w-3.5 h-3.5 text-red-500" />
                             )}
                             <span>{network}</span>
-                            <ChevronDown className="w-3.5 h-3.5" />
+                            <ChevronDown className="w-3 h-3" />
                         </button>
                         {networkOpen && (
-                            <div className="absolute right-0 top-full mt-1 bg-surface border border-border rounded-xl shadow-lg py-1 min-w-[160px] z-50">
+                            <div className="absolute right-0 top-full mt-1.5 bg-surface border border-border rounded-lg shadow-xl py-1 min-w-[160px] z-50">
                                 {Object.keys(NETWORK_PRESETS).map((name) => (
                                     <button
                                         key={name}
@@ -80,9 +83,9 @@ export default function Navbar() {
                             {loggedIn ? (
                                 <button
                                     onClick={() => { setAccountOpen(!accountOpen); setNetworkOpen(false); }}
-                                    className="btn-ghost flex items-center gap-2 text-sm"
+                                    className="btn-ghost flex items-center gap-2"
                                 >
-                                    <div className="w-5 h-5 rounded-full bg-accent/20 flex items-center justify-center text-xs font-mono text-accent">
+                                    <div className="w-5 h-5 rounded-md bg-accent/15 flex items-center justify-center text-xs font-mono text-accent font-semibold">
                                         {currentAccountIndex !== null ? currentAccountIndex : "H"}
                                     </div>
                                     <span className="font-mono text-xs">
@@ -93,19 +96,19 @@ export default function Navbar() {
                                             {formatBalance(balance, tokenDecimals, tokenSymbol)}
                                         </span>
                                     )}
-                                    <ChevronDown className="w-3.5 h-3.5" />
+                                    <ChevronDown className="w-3 h-3" />
                                 </button>
                             ) : (
                                 <button
                                     onClick={() => { setAccountOpen(!accountOpen); setNetworkOpen(false); }}
-                                    className="btn-primary text-sm !py-2 !px-4"
+                                    className="btn-primary !py-2 !px-4"
                                 >
                                     Connect
                                 </button>
                             )}
 
                             {accountOpen && (
-                                <div className="absolute right-0 top-full mt-1 bg-surface border border-border rounded-xl shadow-lg py-1 min-w-[220px] z-50 max-h-[320px] overflow-y-auto">
+                                <div className="absolute right-0 top-full mt-1.5 bg-surface border border-border rounded-lg shadow-xl py-1 min-w-[220px] z-50 max-h-[320px] overflow-y-auto">
                                     {mockAccounts.map((acct, i) => (
                                         <button
                                             key={i}
@@ -114,7 +117,7 @@ export default function Navbar() {
                                                 currentAccountIndex === i ? "text-accent font-medium" : "text-text-secondary"
                                             }`}
                                         >
-                                            <div className="w-5 h-5 rounded-full bg-accent/20 flex items-center justify-center text-xs font-mono text-accent shrink-0">
+                                            <div className="w-5 h-5 rounded-md bg-accent/15 flex items-center justify-center text-xs font-mono text-accent font-semibold shrink-0">
                                                 {i}
                                             </div>
                                             <span className="font-mono text-xs truncate">{truncateAddress(acct.address)}</span>
@@ -136,11 +139,14 @@ export default function Navbar() {
                         </div>
                     )}
 
+                    <div className="w-px h-5 bg-border" />
+
                     <button onClick={toggleTheme} className="btn-ghost !p-2">
                         {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
                     </button>
                 </div>
             </div>
+            <div className="h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
         </nav>
     );
 }

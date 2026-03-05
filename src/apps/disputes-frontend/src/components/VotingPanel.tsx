@@ -77,7 +77,7 @@ export default function VotingPanel({
                     <button
                         onClick={() => castVote(1)}
                         disabled={submitting}
-                        className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all
+                        className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all
                                    bg-green-500/10 text-green-600 hover:bg-green-500/20 border border-green-500/20
                                    disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -87,7 +87,7 @@ export default function VotingPanel({
                     <button
                         onClick={() => castVote(0)}
                         disabled={submitting}
-                        className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all
+                        className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all
                                    bg-red-500/10 text-red-600 hover:bg-red-500/20 border border-red-500/20
                                    disabled:opacity-50 disabled:cursor-not-allowed"
                     >

@@ -15,7 +15,7 @@ function App() {
                     <TransactionProvider>
                         <div className="min-h-screen bg-bg text-text-primary flex flex-col">
                             <Navbar />
-                            <main className="flex-1 dot-grid">
+                            <main className="flex-1 page-glow">
                                 <Routes>
                                     <Route path="/" element={<DisputesPage />} />
                                     <Route
