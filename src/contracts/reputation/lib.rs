@@ -2,7 +2,7 @@
 #![no_std]
 
 use alloc::string::String;
-use common::{ContextId, EntityId, revert, math};
+use common::{ContextId, EntityId, math, revert};
 use pvm::storage::Mapping;
 use pvm::{Address, caller};
 use pvm_contract as pvm;
@@ -66,7 +66,9 @@ mod reputation {
 
         let index = match Storage::address_review_index().get(&(context_id, reviewer, entity)) {
             Some(i) => {
-                let prev = Storage::reviews().get(&(context_id, entity, i)).map(|r| r.rating);
+                let prev = Storage::reviews()
+                    .get(&(context_id, entity, i))
+                    .map(|r| r.rating);
                 avg.update(prev, Some(rating));
                 i
             }
@@ -78,11 +80,14 @@ mod reputation {
             }
         };
 
-        Storage::reviews().insert(&(context_id, entity, index), &Review {
-            reviewer,
-            rating,
-            comment_uri,
-        });
+        Storage::reviews().insert(
+            &(context_id, entity, index),
+            &Review {
+                reviewer,
+                rating,
+                comment_uri,
+            },
+        );
         Storage::metrics().insert(&(context_id, entity), &avg);
     }
 
@@ -145,6 +150,9 @@ mod reputation {
                 average: m.val(),
                 count: m.n_entries(),
             })
-            .unwrap_or(Metrics { average: 0, count: 0 })
+            .unwrap_or(Metrics {
+                average: 0,
+                count: 0,
+            })
     }
 }
