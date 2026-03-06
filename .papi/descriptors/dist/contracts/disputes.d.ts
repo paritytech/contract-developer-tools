@@ -102,6 +102,9 @@ type MessagesDescriptor = {
             "claimant": Address;
             "against": Binary;
             "instruction_index": number;
+            "claim_uri": string;
+            "counter_claim_uri": string;
+            "resolution_uri": string;
         };
     };
     "getTotalDisputeCount": {

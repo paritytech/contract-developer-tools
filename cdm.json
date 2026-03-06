@@ -16,8 +16,8 @@
   "contracts": {
     "e3e86a66aadc74a1": {
       "@polkadot/contexts": {
-        "version": 7,
-        "address": "0xa03C8bfAb20282bDa86A906c483bdF4730C57244",
+        "version": 8,
+        "address": "0xB3b055ca6A10a86Cd29BE67214E77Ce776430b2a",
         "abi": [
           {
             "type": "constructor",
@@ -75,11 +75,11 @@
             "stateMutability": "view"
           }
         ],
-        "metadataCid": "bafk2bzacec44m7whijdmn46hwkumrqt6xx2iuvkyunwo6oaz6krtgocnaryy4"
+        "metadataCid": "bafk2bzacec3xvjqtolu3tdqpg3g47w7mxcf5yo37xnbjkv3tswp4z2kblfioe"
       },
       "@polkadot/reputation": {
-        "version": 6,
-        "address": "0x6B98b743FE20A14FB40Cb947357b880FfA38F317",
+        "version": 7,
+        "address": "0xac999692D491FFE658d2F5B371134C8F30cF00E8",
         "abi": [
           {
             "type": "constructor",
@@ -230,11 +230,11 @@
             "stateMutability": "view"
           }
         ],
-        "metadataCid": "bafk2bzacebffrc5bdu4k2m2kh55g32a4mggfpukmwaj2lo3qpdbvsqxricg74"
+        "metadataCid": "bafk2bzaceaxc5vh2takrxriaqdtryrxukx6zm3hdln7spjhhxnkdpsqbcdy62"
       },
       "@polkadot/disputes": {
-        "version": 7,
-        "address": "0x5B3a615c3D62a0A14c6906Ef672B7127d110E899",
+        "version": 8,
+        "address": "0xa7474b66ba3678E4AF26D8CFd09515C4DaBa358c",
         "abi": [
           {
             "type": "constructor",
@@ -521,6 +521,18 @@
                   {
                     "name": "instruction_index",
                     "type": "uint32"
+                  },
+                  {
+                    "name": "claim_uri",
+                    "type": "string"
+                  },
+                  {
+                    "name": "counter_claim_uri",
+                    "type": "string"
+                  },
+                  {
+                    "name": "resolution_uri",
+                    "type": "string"
                   }
                 ]
               }
@@ -583,7 +595,7 @@
             "stateMutability": "nonpayable"
           }
         ],
-        "metadataCid": "bafk2bzacecbz5azlc7hyo5rrhjapdrxz46o2wh423y5vtqeu6fua6behknu6w"
+        "metadataCid": "bafk2bzacedxjx4p6gndlk2yspmq34qx4bhgosnsfrnwl73zshjuvdoo2libxy"
       }
     }
   }

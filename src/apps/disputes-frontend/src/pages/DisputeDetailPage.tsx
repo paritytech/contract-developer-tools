@@ -37,7 +37,10 @@ interface ParsedMetadata {
 }
 
 function resolveIpfsUrl(uri: string, gateway: string): string {
-    return uri.startsWith("ipfs://") ? `${gateway}${uri.slice(7)}` : uri;
+    const base = gateway.endsWith("/") ? gateway : `${gateway}/`;
+    if (uri.startsWith("ipfs://")) return `${base}${uri.slice(7)}`;
+    if (/^(bafk|bafy|Qm)/.test(uri)) return `${base}${uri}`;
+    return uri;
 }
 
 function parseMetadata(text: string): ParsedMetadata {
@@ -59,27 +62,42 @@ function MetadataContent({
     uri,
     ipfsGatewayUrl,
     label,
+    fallback,
 }: {
     uri: string;
     ipfsGatewayUrl: string;
     label: string;
+    fallback?: string;
 }) {
     const [metadata, setMetadata] = useState<ParsedMetadata | null>(null);
     const [loading, setLoading] = useState(false);
+    const [failed, setFailed] = useState(false);
 
     useEffect(() => {
         if (!uri) return;
         setLoading(true);
+        setFailed(false);
         const url = resolveIpfsUrl(uri, ipfsGatewayUrl);
 
         fetch(url)
-            .then((r) => r.text())
+            .then((r) => {
+                if (!r.ok) throw new Error(r.statusText);
+                return r.text();
+            })
             .then((text) => setMetadata(parseMetadata(text)))
-            .catch(() => setMetadata(null))
+            .catch(() => {
+                setMetadata(null);
+                setFailed(true);
+            })
             .finally(() => setLoading(false));
     }, [uri, ipfsGatewayUrl]);
 
-    if (!uri) return null;
+    if (!uri && !fallback) return null;
+
+    const showFallback = !uri || (failed && fallback);
+    const displayMeta = showFallback && fallback
+        ? { description: fallback, images: [] }
+        : metadata;
 
     return (
         <div className="card mb-4">
@@ -92,25 +110,25 @@ function MetadataContent({
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Loading metadata...
                 </div>
-            ) : metadata ? (
+            ) : displayMeta ? (
                 <>
                     <div
                         className="markdown-preview"
                         dangerouslySetInnerHTML={{
-                            __html: DOMPurify.sanitize(marked.parse(metadata.description) as string),
+                            __html: DOMPurify.sanitize(marked.parse(displayMeta.description) as string),
                         }}
                     />
-                    {metadata.images.length > 0 && (
+                    {displayMeta.images.length > 0 && (
                         <div className="mt-4 flex flex-wrap gap-3">
-                            {metadata.images.map((cid) => (
+                            {displayMeta.images.map((cid) => (
                                 <a
                                     key={cid}
-                                    href={resolveIpfsUrl(`ipfs://${cid}`, ipfsGatewayUrl)}
+                                    href={resolveIpfsUrl(cid, ipfsGatewayUrl)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                 >
                                     <img
-                                        src={resolveIpfsUrl(`ipfs://${cid}`, ipfsGatewayUrl)}
+                                        src={resolveIpfsUrl(cid, ipfsGatewayUrl)}
                                         alt="Evidence"
                                         className="rounded-lg border border-border-strong max-h-60 object-cover"
                                     />
@@ -162,7 +180,7 @@ export default function DisputeDetailPage() {
                 status: info.status,
                 voteCount: Number(info.vote_count),
                 claimant: info.claimant,
-                against: info.against.asHex(),
+                against: String(info.against),
                 instructionIndex: Number(info.instruction_index),
                 claimUri: info.claim_uri,
                 counterClaimUri: info.counter_claim_uri,
@@ -358,6 +376,7 @@ export default function DisputeDetailPage() {
                     uri={instruction.metadataUri}
                     ipfsGatewayUrl={ipfsGatewayUrl}
                     label={`Instruction (${instruction.votingRuleId === 0 ? "Binary" : "Range"} Vote)`}
+                    fallback={instruction.votingRuleId === 0 ? "Cast your vote: **Yes** or **No**." : "Cast your vote on a scale from **0** to **255**."}
                 />
             )}
 
