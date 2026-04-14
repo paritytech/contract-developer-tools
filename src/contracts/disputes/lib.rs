@@ -135,7 +135,7 @@ fn compute_decision(voting_rule_id: u8, tally: &math::RunningAverage) -> u8 {
     }
 }
 
-#[pvm::contract(cdm = "@polkadot/disputes")]
+#[pvm::contract(cdm = "@mock/disputes")]
 mod disputes {
     use super::*;
 

@@ -30,7 +30,7 @@ struct Storage {
     address_review_index: Mapping<(ContextId, Address, EntityId), u64>,
 }
 
-#[pvm::contract(cdm = "@polkadot/reputation")]
+#[pvm::contract(cdm = "@mock/reputation")]
 mod reputation {
     use super::*;
 
