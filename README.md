@@ -19,11 +19,25 @@ Reputation system — manages reviews and ratings for entities within contexts. 
 ### `disputes` (`@polkadot/disputes`)
 Dispute system — manages the lifecycle of disputes (open, judge, resolve/dismiss) within contexts. Depends on `contexts` via CDM for ownership verification.
 
+### `profiles` (`@polkadot/profiles`)
+Profile registry - maps addresses to one-to-many profile `EntityId`s with metadata, scoped by context. Depends on `contexts` for ownership, and opt-in on `names` for `get_profile_info_with_name` (returns profile + owner's primary name in one call).
+
+### `threads` (`@polkadot/threads`)
+Thread/relationship graph — indexes posts by parent and author, forming a generic graph usable as feeds, replies, or walls. Depends on `contexts` for ownership verification.
+
+### `names` (`@polkadot/names`)
+Name registry - maps human-readable names to addresses within a context, with metadata URIs, per-owner enumeration, transfers, and reverse primary lookup. Depends on `contexts` for ownership verification.
+
 ```
-reputation --depends on--> contexts <--depends on-- disputes
-                              |
-                       [context ownership]
-                    ContextId -> Address
+reputation   disputes   threads   names
+      \        |          |        |
+       \       |          |        |
+        \     [context ownership]  |
+         \     |          |        |
+          +--> contexts <-+--------+
+                  ^
+                  |
+               profiles --also--> names (opt-in, for primary_name)
 ```
 
 ## Shared Types (`src/lib`)
@@ -70,6 +84,15 @@ contract-developer-tools/
         Cargo.toml
         lib.rs
       disputes/                        # Dispute system (depends on contexts)
+        Cargo.toml
+        lib.rs
+      profiles/                        # Profile registry (depends on contexts, opt-in names)
+        Cargo.toml
+        lib.rs
+      threads/                         # Thread/relationship graph (depends on contexts)
+        Cargo.toml
+        lib.rs
+      names/                           # Name registry (depends on contexts)
         Cargo.toml
         lib.rs
     index.ts                           # TypeScript validation script
