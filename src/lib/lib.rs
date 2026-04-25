@@ -1,5 +1,8 @@
 #![no_std]
 
+extern crate alloc;
+
+pub mod indexing;
 pub mod math;
 
 /// Revert the current contract call with an error message.

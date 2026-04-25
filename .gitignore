@@ -11,3 +11,5 @@ node_modules/
 dist/
 !.papi/descriptors/dist/
 .turbo/
+
+reference-repos/
