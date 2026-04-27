@@ -14,13 +14,12 @@
 //!
 //! ## Picking `T`
 //! Each entry costs ~`size_of(K) + size_of(V) + 8` bytes; each child link costs
-//! `16` bytes (id + mirrored subtree count). Keep `2T-1` entries plus `2T`
-//! child links under ~400 bytes:
-//! - Fixed 32-byte K and 32-byte V: `T = 3` (5 entries, 6 children) → ~470 bytes
-//!   internal / 360 bytes leaf. The internal case is actually tight for T=3; use
-//!   T=2 if you expect full internal nodes to pair with 32-byte K/V.
-//! - Variable-length K (package names, etc.): `T = 2` (3 entries, 4 children) is
-//!   the safe default — leaves at ~3 × size_of(K,V) bytes.
+//! `20` bytes (8-byte id + 8-byte mirrored subtree count + 4-byte mirrored
+//! own-entry count). Keep `2T-1` entries plus `2T` child links under ~400 bytes:
+//! - Fixed 32-byte K and 32-byte V: `T = 2` (3 entries, 4 children) is the safe
+//!   default. T=3 risks exceeding the 416-byte cap on internal nodes.
+//! - Variable-length K (package names, etc.): `T = 2` is again the safe choice.
+//! - Small fixed K like `u32`/`u64` with a 32-byte V: `T = 3` fits comfortably.
 //!
 //! ## Complexity
 //! - `insert`, `remove_by_nonce`, `get_first`, `select`, `rank_of_key`: O(log n).
@@ -52,16 +51,19 @@ struct Entry<K, V> {
 ///
 /// Invariants:
 /// - `entries` is sorted by `(key, nonce)`.
-/// - For a leaf: `children` and `child_counts` are empty.
-/// - For an internal node: `children.len() == child_counts.len() == entries.len() + 1`.
-/// - `child_counts[i]` mirrors the `subtree_count()` of `children[i]`. Maintained
-///   eagerly so splits, merges, and rank queries don't need to load children
-///   just to learn their size.
+/// - For a leaf: `children`, `child_counts`, and `child_entry_counts` are all empty.
+/// - For an internal node: all three vecs share the same length, equal to
+///   `entries.len() + 1`.
+/// - `child_counts[i]` mirrors `children[i].subtree_count()` (used by rank/select).
+/// - `child_entry_counts[i]` mirrors `children[i].entries.len()` (used by the
+///   delete rebalancer, which needs each child's own key count — *not* its
+///   subtree size — to enforce the B-tree minimum-key invariant).
 #[derive(Encode, Decode, Clone)]
 struct Node<K, V> {
     entries: Vec<Entry<K, V>>,
     children: Vec<NodeId>,
     child_counts: Vec<u64>,
+    child_entry_counts: Vec<u32>,
 }
 
 impl<K, V> Node<K, V> {
@@ -70,6 +72,7 @@ impl<K, V> Node<K, V> {
             entries: Vec::new(),
             children: Vec::new(),
             child_counts: Vec::new(),
+            child_entry_counts: Vec::new(),
         }
     }
     fn is_leaf(&self) -> bool {
@@ -194,6 +197,7 @@ where
                         entries: Vec::new(),
                         children: alloc::vec![root_id],
                         child_counts: alloc::vec![root.subtree_count()],
+                        child_entry_counts: alloc::vec![root.entries.len() as u32],
                     };
                     self.split_child(&mut new_root, 0);
                     let new_root_id = self.alloc(&new_root);
@@ -208,17 +212,23 @@ where
     }
 
     /// Find the value of the leftmost (earliest-inserted) entry with key `k`.
+    ///
+    /// With duplicates allowed, an internal node's `entries[pos]` with key `k`
+    /// is *not* necessarily the leftmost — `children[pos]` could hold earlier
+    /// duplicates with smaller nonces. So we always descend leftward (into
+    /// `children[pos]`) and only commit to the candidate at the leaf.
     pub fn get_first(&self, k: &K) -> Option<V> {
         let mut id = self.root_id()?;
+        let mut candidate: Option<V> = None;
         loop {
             let node = self.load(id);
             let pos = node.lower_bound_key(k);
             if pos < node.entries.len() && node.entries[pos].key == *k {
-                return Some(node.entries[pos].value.clone());
+                // Tentative — `children[pos]` may hold an earlier duplicate.
+                candidate = Some(node.entries[pos].value.clone());
             }
             if node.is_leaf() {
-                // Still might be in children we haven't checked.
-                return None;
+                return candidate;
             }
             id = node.children[pos];
         }
@@ -262,9 +272,10 @@ where
     }
 
     /// Remove the leftmost entry matching both `k` and `v`. Scans duplicate
-    /// keys in order; returns `true` on success. O(log n + D) where D is the
-    /// number of entries with key `k`. For hot paths with heavy duplication,
-    /// prefer storing the nonce from `insert` and using `remove_by_nonce`.
+    /// keys in order; returns `true` on success. O(D · log n) where D is the
+    /// number of entries with key `k` (each duplicate inspection re-descends
+    /// from the root). For hot paths with heavy duplication, store the nonce
+    /// returned by `insert` and call `remove_by_nonce` instead.
     pub fn remove(&self, k: &K, v: &V) -> bool
     where
         V: PartialEq,
@@ -307,7 +318,9 @@ where
     }
 
     /// Number of entries strictly before the leftmost entry with key `k`.
-    /// O(log n). Useful for "what page does this key live on?".
+    /// If no entry with key `k` exists, returns the count of entries with
+    /// keys strictly less than `k` (i.e. the rank where such a key *would*
+    /// be inserted). O(log n). Useful for "what page does this key live on?".
     pub fn rank_of_key(&self, k: &K) -> u64 {
         let mut id = match self.root_id() {
             Some(id) => id,
@@ -360,26 +373,32 @@ where
             return;
         }
 
-        // Ensure the child we're about to descend into is not full.
+        // Load the child to (a) check fullness for preemptive split, and
+        // (b) cache its leaf-ness so we know whether to bump the parent's
+        // mirrored own-entry count for this descent. Splits preserve
+        // leaf-ness, so this flag stays valid across the split.
         let mut child_idx = pos;
-        if node.child_counts[child_idx] > 0 {
-            let child = self.load(node.children[child_idx]);
-            if child.entries.len() == Self::max_keys() {
-                self.split_child(&mut node, child_idx);
-                // After split, a new separator sits at node.entries[child_idx].
-                // Descend right if entry sorts after it.
-                let sep = &node.entries[child_idx];
-                let goes_right = (entry.key.cmp(&sep.key)).then(entry.nonce.cmp(&sep.nonce))
-                    == core::cmp::Ordering::Greater;
-                if goes_right {
-                    child_idx += 1;
-                }
+        let child = self.load(node.children[child_idx]);
+        let child_is_leaf = child.is_leaf();
+        if child.entries.len() == Self::max_keys() {
+            self.split_child(&mut node, child_idx);
+            // After split, a new separator sits at node.entries[child_idx].
+            // Descend right if entry sorts after it.
+            let sep = &node.entries[child_idx];
+            let goes_right = (entry.key.cmp(&sep.key)).then(entry.nonce.cmp(&sep.nonce))
+                == core::cmp::Ordering::Greater;
+            if goes_right {
+                child_idx += 1;
             }
         }
 
-        // Mirror-count the insertion we're about to make and write the node
-        // back before recursing.
+        // Mirror-count the insertion we're about to make. The subtree count
+        // always grows by 1; the child's own entry count grows only if the
+        // child *is* the leaf where the entry will land.
         node.child_counts[child_idx] += 1;
+        if child_is_leaf {
+            node.child_entry_counts[child_idx] += 1;
+        }
         let descend = node.children[child_idx];
         self.store(node_id, &node);
         self.insert_nonfull(descend, entry);
@@ -396,12 +415,13 @@ where
         let right_entries: Vec<Entry<K, V>> = left.entries.drain(T..).collect();
         let middle = left.entries.pop().expect("full node has a median");
 
-        let (right_children, right_child_counts) = if left.is_leaf() {
-            (Vec::new(), Vec::new())
+        let (right_children, right_child_counts, right_child_entry_counts) = if left.is_leaf() {
+            (Vec::new(), Vec::new(), Vec::new())
         } else {
             (
                 left.children.drain(T..).collect::<Vec<_>>(),
                 left.child_counts.drain(T..).collect::<Vec<_>>(),
+                left.child_entry_counts.drain(T..).collect::<Vec<_>>(),
             )
         };
 
@@ -409,10 +429,13 @@ where
             entries: right_entries,
             children: right_children,
             child_counts: right_child_counts,
+            child_entry_counts: right_child_entry_counts,
         };
 
         let left_count = left.subtree_count();
+        let left_entry_count = left.entries.len() as u32;
         let right_count = right.subtree_count();
+        let right_entry_count = right.entries.len() as u32;
 
         self.store(left_id, &left);
         let right_id = self.alloc(&right);
@@ -421,6 +444,8 @@ where
         parent.children.insert(i + 1, right_id);
         parent.child_counts[i] = left_count;
         parent.child_counts.insert(i + 1, right_count);
+        parent.child_entry_counts[i] = left_entry_count;
+        parent.child_entry_counts.insert(i + 1, right_entry_count);
     }
 
     // ====================================================================
@@ -445,23 +470,29 @@ where
                 return Some(removed);
             }
             // Case 2: in an internal node. Cases 2a / 2b / 2c from CLRS 18.3.
+            // The check has to be on the child's *own* entry count, not its
+            // subtree size — a min-filled internal child can have a huge
+            // subtree, but stealing from it would still violate the B-tree
+            // minimum-key invariant.
             let original = node.entries[pos].value.clone();
 
-            if node.child_counts[pos] >= T as u64 {
+            if node.child_entry_counts[pos] >= T as u32 {
                 // 2a: steal predecessor from fat left child.
                 let pred = self.find_max(node.children[pos]);
                 self.remove_from(node.children[pos], &pred.key, pred.nonce);
-                let left_count = self.load(node.children[pos]).subtree_count();
+                let left = self.load(node.children[pos]);
                 node.entries[pos] = pred;
-                node.child_counts[pos] = left_count;
+                node.child_counts[pos] = left.subtree_count();
+                node.child_entry_counts[pos] = left.entries.len() as u32;
                 self.store(node_id, &node);
-            } else if node.child_counts[pos + 1] >= T as u64 {
+            } else if node.child_entry_counts[pos + 1] >= T as u32 {
                 // 2b: steal successor from fat right child.
                 let succ = self.find_min(node.children[pos + 1]);
                 self.remove_from(node.children[pos + 1], &succ.key, succ.nonce);
-                let right_count = self.load(node.children[pos + 1]).subtree_count();
+                let right = self.load(node.children[pos + 1]);
                 node.entries[pos] = succ;
-                node.child_counts[pos + 1] = right_count;
+                node.child_counts[pos + 1] = right.subtree_count();
+                node.child_entry_counts[pos + 1] = right.entries.len() as u32;
                 self.store(node_id, &node);
             } else {
                 // 2c: both children are minimum-filled; merge them (pulling
@@ -470,9 +501,10 @@ where
                 let merged_id = node.children[pos];
                 self.store(node_id, &node);
                 let _ = self.remove_from(merged_id, k, nonce);
-                // Refresh the mirrored count after recursion.
-                let merged_count = self.load(merged_id).subtree_count();
-                node.child_counts[pos] = merged_count;
+                // Refresh the mirrored counts after recursion.
+                let merged = self.load(merged_id);
+                node.child_counts[pos] = merged.subtree_count();
+                node.child_entry_counts[pos] = merged.entries.len() as u32;
                 self.store(node_id, &node);
             }
             return Some(original);
@@ -487,8 +519,10 @@ where
         self.store(node_id, &node);
         let result = self.remove_from(child_id, k, nonce);
         if result.is_some() {
-            // Refresh the mirrored count for the subtree we touched.
-            node.child_counts[descend] = self.load(child_id).subtree_count();
+            // Refresh the mirrored counts for the subtree we touched.
+            let child = self.load(child_id);
+            node.child_counts[descend] = child.subtree_count();
+            node.child_entry_counts[descend] = child.entries.len() as u32;
             self.store(node_id, &node);
         }
         result
@@ -499,16 +533,20 @@ where
     /// sibling or merges. Returns the (possibly shifted) child index to
     /// descend into.
     fn descend_prepared(&self, node: &mut Node<K, V>, pos: usize) -> usize {
-        if node.child_counts[pos] >= T as u64 {
+        // Threshold is on the child's own entry count (`child_entry_counts`),
+        // never on its subtree size. An internal child with `T-1` entries can
+        // still have a large subtree, but it's still min-filled and unsafe
+        // to remove from without rebalancing.
+        if node.child_entry_counts[pos] >= T as u32 {
             return pos;
         }
         let has_left = pos > 0;
         let has_right = pos + 1 < node.children.len();
 
-        if has_left && node.child_counts[pos - 1] >= T as u64 {
+        if has_left && node.child_entry_counts[pos - 1] >= T as u32 {
             self.borrow_from_left(node, pos);
             pos
-        } else if has_right && node.child_counts[pos + 1] >= T as u64 {
+        } else if has_right && node.child_entry_counts[pos + 1] >= T as u32 {
             self.borrow_from_right(node, pos);
             pos
         } else if has_right {
@@ -537,12 +575,16 @@ where
         if !left.is_leaf() {
             let moved_child = left.children.pop().unwrap();
             let moved_count = left.child_counts.pop().unwrap();
+            let moved_entry_count = left.child_entry_counts.pop().unwrap();
             child.children.insert(0, moved_child);
             child.child_counts.insert(0, moved_count);
+            child.child_entry_counts.insert(0, moved_entry_count);
         }
 
         node.child_counts[pos - 1] = left.subtree_count();
         node.child_counts[pos] = child.subtree_count();
+        node.child_entry_counts[pos - 1] = left.entries.len() as u32;
+        node.child_entry_counts[pos] = child.entries.len() as u32;
 
         self.store(left_id, &left);
         self.store(child_id, &child);
@@ -563,12 +605,16 @@ where
         if !right.is_leaf() {
             let moved_child = right.children.remove(0);
             let moved_count = right.child_counts.remove(0);
+            let moved_entry_count = right.child_entry_counts.remove(0);
             child.children.push(moved_child);
             child.child_counts.push(moved_count);
+            child.child_entry_counts.push(moved_entry_count);
         }
 
         node.child_counts[pos] = child.subtree_count();
         node.child_counts[pos + 1] = right.subtree_count();
+        node.child_entry_counts[pos] = child.entries.len() as u32;
+        node.child_entry_counts[pos + 1] = right.entries.len() as u32;
 
         self.store(child_id, &child);
         self.store(right_id, &right);
@@ -589,11 +635,14 @@ where
         if !left.is_leaf() {
             left.children.extend(right.children);
             left.child_counts.extend(right.child_counts);
+            left.child_entry_counts.extend(right.child_entry_counts);
         }
 
         node.children.remove(pos + 1);
         node.child_counts.remove(pos + 1);
+        node.child_entry_counts.remove(pos + 1);
         node.child_counts[pos] = left.subtree_count();
+        node.child_entry_counts[pos] = left.entries.len() as u32;
 
         self.store(left_id, &left);
         self.free(right_id);
@@ -620,16 +669,20 @@ where
 
     // --- nonce lookup for value-keyed removes --------------------------
 
+    /// Same descent as `get_first`: track a tentative match at every level
+    /// and only commit at the leaf, since `children[pos]` may hold an earlier
+    /// duplicate (smaller nonce, same key).
     fn find_first_nonce(&self, k: &K) -> Option<u64> {
         let mut id = self.root_id()?;
+        let mut candidate: Option<u64> = None;
         loop {
             let node = self.load(id);
             let pos = node.lower_bound_key(k);
             if pos < node.entries.len() && node.entries[pos].key == *k {
-                return Some(node.entries[pos].nonce);
+                candidate = Some(node.entries[pos].nonce);
             }
             if node.is_leaf() {
-                return None;
+                return candidate;
             }
             id = node.children[pos];
         }
