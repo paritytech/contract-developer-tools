@@ -93,6 +93,10 @@ pub struct OrderedIndex<K, V, const T: usize = 2> {
 impl<K, V, const T: usize> OrderedIndex<K, V, T> {
     pub const fn new(namespace: &'static [u8]) -> Self {
         assert!(T >= 2, "OrderedIndex: minimum degree T must be >= 2");
+        assert!(
+            T <= ((u32::MAX as usize) + 1) / 2,
+            "OrderedIndex: T too large for mirrored child_entry_counts"
+        );
         Self {
             namespace,
             _marker: PhantomData,
@@ -138,13 +142,17 @@ where
     }
     fn alloc(&self, node: &Node<K, V>) -> NodeId {
         let id = self.next_id_cell().get().unwrap_or(1);
-        self.next_id_cell().set(&(id + 1));
+        let next = id.checked_add(1).expect("OrderedIndex: node id overflow");
+        self.next_id_cell().set(&next);
         self.store(id, node);
         id
     }
     fn alloc_nonce(&self) -> u64 {
         let n = self.next_nonce_cell().get().unwrap_or(0);
-        self.next_nonce_cell().set(&(n + 1));
+        let next = n
+            .checked_add(1)
+            .expect("OrderedIndex: insertion nonce overflow");
+        self.next_nonce_cell().set(&next);
         n
     }
     fn root_id(&self) -> Option<NodeId> {
@@ -335,12 +343,12 @@ where
         loop {
             let node = self.load(id);
             let pos = node.lower_bound_key(k);
-            for i in 0..pos {
-                rank += node.child_counts.get(i).copied().unwrap_or(0);
-                rank += 1;
-            }
             if node.is_leaf() {
-                return rank;
+                return rank + pos as u64;
+            }
+            for i in 0..pos {
+                rank += node.child_counts[i];
+                rank += 1;
             }
             id = node.children[pos];
         }
@@ -398,7 +406,6 @@ where
         }
 
         let descend = node.children[child_idx];
-        self.store(node_id, &node);
         self.insert_nonfull(descend, entry);
         self.refresh_child_mirrors(&mut node, child_idx);
         self.store(node_id, &node);
