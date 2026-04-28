@@ -1,12 +1,12 @@
 //! Persistent sorted multimap with O(log n) ops over `pvm_contract`'s key-value storage.
 //!
-//! A B-tree of minimum degree `T` (default 3): each node holds between `T-1` and
+//! A B-tree of minimum degree `T` (default 2): each node holds between `T-1` and
 //! `2T-1` entries and occupies exactly one storage slot. Because `pallet-revive`
 //! caps storage values at 416 bytes and charges a ~9.5M-ps base cost per slot
 //! access, packing many entries per slot — rather than one node per entry — is
 //! the right on-chain shape for a search tree. Read/write cost scales with the
-//! height of the tree, which is ~log_T(n): a million entries sits at 4–5 levels
-//! with `T = 3`.
+//! height of the tree, which is ~log_T(n): even `T = 2` keeps a million entries
+//! to only on the order of tens of levels, and larger `T` shrinks that further.
 //!
 //! Duplicate keys are allowed. Internally every entry gets a monotonic insertion
 //! nonce, so `(K, nonce)` forms a strict total order; the public API remains
@@ -27,7 +27,7 @@
 //! - `remove(k, v)`: O(D · log n) — one descent per duplicate inspected. For
 //!   hot paths with heavy duplication, keep the nonce returned by `insert`
 //!   and call `remove_by_nonce` instead.
-//! - `range(...)`: O(log n + items_returned).
+//! - `range(...)`: O(log n + items_scanned).
 
 use alloc::vec::Vec;
 use core::marker::PhantomData;
@@ -85,7 +85,7 @@ impl<K, V> Node<K, V> {
 
 /// Handle to a persistent sorted multimap. Cheap to construct; holds only a
 /// namespace. All operations go directly to storage.
-pub struct OrderedIndex<K, V, const T: usize = 3> {
+pub struct OrderedIndex<K, V, const T: usize = 2> {
     namespace: &'static [u8],
     _marker: PhantomData<(K, V)>,
 }
@@ -152,6 +152,11 @@ where
             Some(0) | None => None,
             Some(id) => Some(id),
         }
+    }
+    fn refresh_child_mirrors(&self, node: &mut Node<K, V>, child_idx: usize) {
+        let child = self.load(node.children[child_idx]);
+        node.child_counts[child_idx] = child.subtree_count();
+        node.child_entry_counts[child_idx] = child.entries.len() as u32;
     }
 
     // ====================================================================
@@ -373,13 +378,13 @@ where
             return;
         }
 
-        // Load the child to (a) check fullness for preemptive split, and
-        // (b) cache its leaf-ness so we know whether to bump the parent's
-        // mirrored own-entry count for this descent. Splits preserve
-        // leaf-ness, so this flag stays valid across the split.
+        // Load the child so we can preemptively split if it is full before
+        // descending. We do not try to predict how the child's mirrored
+        // counts will change; insertion can cause deeper splits that increase
+        // the child's own `entries.len()`, so we refresh the exact mirrors
+        // after recursion instead.
         let mut child_idx = pos;
         let child = self.load(node.children[child_idx]);
-        let child_is_leaf = child.is_leaf();
         if child.entries.len() == Self::max_keys() {
             self.split_child(&mut node, child_idx);
             // After split, a new separator sits at node.entries[child_idx].
@@ -392,16 +397,11 @@ where
             }
         }
 
-        // Mirror-count the insertion we're about to make. The subtree count
-        // always grows by 1; the child's own entry count grows only if the
-        // child *is* the leaf where the entry will land.
-        node.child_counts[child_idx] += 1;
-        if child_is_leaf {
-            node.child_entry_counts[child_idx] += 1;
-        }
         let descend = node.children[child_idx];
         self.store(node_id, &node);
         self.insert_nonfull(descend, entry);
+        self.refresh_child_mirrors(&mut node, child_idx);
+        self.store(node_id, &node);
     }
 
     /// Split `parent.children[i]`, which must be full, into two `T-1`-entry
@@ -480,19 +480,15 @@ where
                 // 2a: steal predecessor from fat left child.
                 let pred = self.find_max(node.children[pos]);
                 self.remove_from(node.children[pos], &pred.key, pred.nonce);
-                let left = self.load(node.children[pos]);
                 node.entries[pos] = pred;
-                node.child_counts[pos] = left.subtree_count();
-                node.child_entry_counts[pos] = left.entries.len() as u32;
+                self.refresh_child_mirrors(&mut node, pos);
                 self.store(node_id, &node);
             } else if node.child_entry_counts[pos + 1] >= T as u32 {
                 // 2b: steal successor from fat right child.
                 let succ = self.find_min(node.children[pos + 1]);
                 self.remove_from(node.children[pos + 1], &succ.key, succ.nonce);
-                let right = self.load(node.children[pos + 1]);
                 node.entries[pos] = succ;
-                node.child_counts[pos + 1] = right.subtree_count();
-                node.child_entry_counts[pos + 1] = right.entries.len() as u32;
+                self.refresh_child_mirrors(&mut node, pos + 1);
                 self.store(node_id, &node);
             } else {
                 // 2c: both children are minimum-filled; merge them (pulling
@@ -502,9 +498,7 @@ where
                 self.store(node_id, &node);
                 let _ = self.remove_from(merged_id, k, nonce);
                 // Refresh the mirrored counts after recursion.
-                let merged = self.load(merged_id);
-                node.child_counts[pos] = merged.subtree_count();
-                node.child_entry_counts[pos] = merged.entries.len() as u32;
+                self.refresh_child_mirrors(&mut node, pos);
                 self.store(node_id, &node);
             }
             return Some(original);
@@ -520,9 +514,7 @@ where
         let result = self.remove_from(child_id, k, nonce);
         if result.is_some() {
             // Refresh the mirrored counts for the subtree we touched.
-            let child = self.load(child_id);
-            node.child_counts[descend] = child.subtree_count();
-            node.child_entry_counts[descend] = child.entries.len() as u32;
+            self.refresh_child_mirrors(&mut node, descend);
             self.store(node_id, &node);
         }
         result
