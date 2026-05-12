@@ -6,6 +6,9 @@
     "scripts": {
         "postinstall": "papi",
         "start": "bun src/index.ts",
+        "setup:local": "bun src/setup-local.ts",
+        "deploy:contexts": "bun src/deploy-contexts.ts",
+        "test:contexts": "bun src/test-contexts.ts",
         "dev": "turbo dev",
         "build": "turbo build",
         "clean": "turbo clean"
@@ -13,11 +16,15 @@
     "dependencies": {
         "@dotdm/cdm": "latest",
         "@polkadot-api/descriptors": "file:.papi/descriptors",
+        "@polkadot-api/json-rpc-provider": "^0.2.0",
         "@polkadot-labs/hdkd": "^0.0.26",
         "@polkadot-labs/hdkd-helpers": "^0.0.27",
         "polkadot-api": "^1.23.3"
     },
     "devDependencies": {
+        "@dotdm/contracts": "^2.0.3",
+        "@parity/product-sdk-keys": "^0.2.0",
+        "@polkadot-api/sdk-ink": "^0.6.2",
         "turbo": "^2.8.13"
     }
 }
