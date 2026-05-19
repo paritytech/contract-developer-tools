@@ -169,24 +169,24 @@ try {
         );
     }
 
-    console.log("\nadd_operator");
-    await expectRevert("Charlie (non-owner) cannot addOperator", () =>
-        contexts.addOperator.tx(ctx, Charlie.h160, { signer: Charlie.signer, origin: Charlie.ss58 }),
+    console.log("\nadd_operators");
+    await expectRevert("Charlie (non-owner) cannot addOperators", () =>
+        contexts.addOperators.tx(ctx, [Charlie.h160], { signer: Charlie.signer, origin: Charlie.ss58 }),
     );
-    await expectOk("Alice (owner) can addOperator(Charlie)", () =>
-        contexts.addOperator.tx(ctx, Charlie.h160),
+    await expectOk("Alice (owner) can addOperators([Charlie])", () =>
+        contexts.addOperators.tx(ctx, [Charlie.h160]),
     );
     {
         const r = await contexts.isAuthorized.query(ctx, Charlie.h160);
         check("Charlie is now authorized", r.success && r.value === true);
     }
 
-    console.log("\nremove_operator");
-    await expectRevert("Charlie cannot removeOperator", () =>
-        contexts.removeOperator.tx(ctx, Bob.h160, { signer: Charlie.signer, origin: Charlie.ss58 }),
+    console.log("\nremove_operators");
+    await expectRevert("Charlie cannot removeOperators", () =>
+        contexts.removeOperators.tx(ctx, [Bob.h160], { signer: Charlie.signer, origin: Charlie.ss58 }),
     );
-    await expectOk("Alice can removeOperator(Bob)", () =>
-        contexts.removeOperator.tx(ctx, Bob.h160),
+    await expectOk("Alice can removeOperators([Bob])", () =>
+        contexts.removeOperators.tx(ctx, [Bob.h160]),
     );
     {
         const r = await contexts.isAuthorized.query(ctx, Bob.h160);
@@ -239,24 +239,24 @@ try {
         check("second-register operator NOT added", d.success && d.value === false);
     }
 
-    console.log("\nidempotent add_operator");
+    console.log("\nidempotent add_operators");
     {
         const c = freshCtx();
         await contexts.registerContext.tx(c, Alice.h160, Bob.h160);
         await expectOk("re-adding existing operator does not revert", () =>
-            contexts.addOperator.tx(c, Bob.h160),
+            contexts.addOperators.tx(c, [Bob.h160]),
         );
         const r = await contexts.isAuthorized.query(c, Bob.h160);
         check("Bob still authorized (no state corruption)", r.success && r.value === true);
     }
 
-    console.log("\nremove_operator on non-operator is a no-op");
+    console.log("\nremove_operators on non-operator is a no-op");
     {
         const c = freshCtx();
         await contexts.registerContext.tx(c, Alice.h160, Bob.h160);
         // Charlie was never added
         await expectOk("removing non-operator does not revert", () =>
-            contexts.removeOperator.tx(c, Charlie.h160),
+            contexts.removeOperators.tx(c, [Charlie.h160]),
         );
         const ch = await contexts.isAuthorized.query(c, Charlie.h160);
         check("non-operator still not authorized after no-op remove", ch.success && ch.value === false);
@@ -271,17 +271,37 @@ try {
         await contexts.registerContext.tx(c, Alice.h160, Alice.h160);
         // Remove her from the operator set
         await expectOk("remove Alice from operator set", () =>
-            contexts.removeOperator.tx(c, Alice.h160),
+            contexts.removeOperators.tx(c, [Alice.h160]),
         );
         const r = await contexts.isAuthorized.query(c, Alice.h160);
         check("Alice still authorized via owner path after operator removal", r.success && r.value === true);
+    }
+
+    console.log("\nbatch add/remove operators");
+    {
+        const c = freshCtx();
+        await contexts.registerContext.tx(c, Alice.h160, Bob.h160);
+        await expectOk("addOperators batches multiple addresses", () =>
+            contexts.addOperators.tx(c, [Charlie.h160, Dave.h160]),
+        );
+        const ch = await contexts.isAuthorized.query(c, Charlie.h160);
+        const d = await contexts.isAuthorized.query(c, Dave.h160);
+        check("Charlie added via batch", ch.success && ch.value === true);
+        check("Dave added via batch", d.success && d.value === true);
+        await expectOk("removeOperators batches multiple addresses", () =>
+            contexts.removeOperators.tx(c, [Charlie.h160, Dave.h160]),
+        );
+        const ch2 = await contexts.isAuthorized.query(c, Charlie.h160);
+        const d2 = await contexts.isAuthorized.query(c, Dave.h160);
+        check("Charlie removed via batch", ch2.success && ch2.value === false);
+        check("Dave removed via batch", d2.success && d2.value === false);
     }
 
     console.log("\ntransfer_owner preserves operator set");
     {
         const c = freshCtx();
         await contexts.registerContext.tx(c, Alice.h160, Bob.h160);
-        await contexts.addOperator.tx(c, Charlie.h160);
+        await contexts.addOperators.tx(c, [Charlie.h160]);
         await contexts.transferOwner.tx(c, Dave.h160);
         const b = await contexts.isAuthorized.query(c, Bob.h160);
         check("Bob still authorized after owner transfer", b.success && b.value === true);

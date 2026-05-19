@@ -12,18 +12,18 @@ Consumer contracts (reputation, threads, disputes) call `is_owner(ctx, caller())
 | Key | Value |
 |-----|-------|
 | `ContextId` | `Address` (owner) |
-| `(ContextId, Address)` | `bool` (operator membership) |
+| `(ContextId, Address)` | presence-only (operator membership; key existence is the signal) |
 
 ## Methods
 
 ### `register_context(context_id, owner, operator)`
-Registers a new context, setting `owner` as the owner and `operator` as the initial approved operator. No-op if the context already exists — to add operators to an existing context, the owner uses `add_operator`.
+Registers a new context, setting `owner` as the owner and `operator` as the initial approved operator. No-op if the context already exists — to add operators to an existing context, the owner uses `add_operators`.
 
-### `add_operator(context_id, operator)`
-Adds an address to the operator set. Caller must be the current owner. Reverts with `NotOwner` otherwise.
+### `add_operators(context_id, operators)`
+Adds one or more addresses to the operator set. Caller must be the current owner. Reverts with `NotOwner` otherwise.
 
-### `remove_operator(context_id, operator)`
-Removes an address from the operator set. Caller must be the current owner. Reverts with `NotOwner` otherwise.
+### `remove_operators(context_id, operators)`
+Removes one or more addresses from the operator set. Caller must be the current owner. Reverts with `NotOwner` otherwise.
 
 ### `transfer_owner(context_id, new_owner)`
 Rotates the owner. Caller must be the current owner. Reverts with `NotOwner` otherwise. Operator membership is unchanged.
@@ -41,10 +41,10 @@ Back-compat alias for `is_authorized` — same semantics. Existing call sites in
 
 For an operator contract (e.g. a registry) being redeployed under the same `context_id`:
 
-1. **Owner**: `add_operator(ctx, new_operator_address)`.
+1. **Owner**: `add_operators(ctx, [new_operator_address])`.
 2. Deploy the new operator contract.
 3. (Optional) Freeze and replay state on the outgoing operator.
-4. **Owner**: `remove_operator(ctx, old_operator_address)` once the cutover is complete.
+4. **Owner**: `remove_operators(ctx, [old_operator_address])` once the cutover is complete.
 
 No contract-side hatch on the outgoing operator is required — context-level authority is managed entirely through `contexts` by the owner.
 
