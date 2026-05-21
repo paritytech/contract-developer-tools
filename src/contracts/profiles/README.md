@@ -1,10 +1,10 @@
 # Profiles (`@polkadot/profiles`)
 
-Profile registry. Mints profile ids that belong to an `Address` and carry a metadata URI. One address can own many profiles within a context — each `create_profile` call mints a fresh id, so the same user can hold multiple personas (or roles, or accounts) under the same app. All writes are gated by context ownership.
+Profile registry. Mints profile ids that belong to an `Address` and carry a metadata URI. One address can own many profiles within a context — each `create_profile` call mints a fresh id, so the same user can hold multiple personas (or roles, or accounts) under the same app. All writes are gated by context authorization.
 
 ## Dependencies
 
-- `@polkadot/contexts` — used via CDM to verify the caller owns the context
+- `@polkadot/contexts` — used via CDM to verify the caller is authorized for the context
 - `common::generate_id` — derives new profile ids from a per-context nonce
 
 ## Core Concepts
@@ -17,10 +17,10 @@ A profile is a `(owner, metadata_uri)` record keyed by an `EntityId`. The id is 
 
 The contract distinguishes two roles:
 
-- **Context owner** (the caller) — the app contract/operator creating or mutating profiles. Gated via `@polkadot/contexts`.
+- **Authorized context caller** (the caller) — the context owner or approved operator creating or mutating profiles. Gated via `@polkadot/contexts`.
 - **Profile owner** (the `Address` recorded on the profile) — the end user the profile represents.
 
-Whether the profile owner actually authorized a given `update_profile` is the **app layer's** job to verify before calling. This contract only enforces the context-owner gate — it has no built-in signature check against the profile's recorded `owner`.
+Whether the profile owner actually authorized a given `update_profile` is the **app layer's** job to verify before calling. This contract only enforces the context authorization gate — it has no built-in signature check against the profile's recorded `owner`.
 
 ### Per-owner index
 
@@ -37,7 +37,7 @@ Profiles are indexed per owner via `of_at` / `of_count`, so a client can list ev
 
 ## Methods
 
-### Writes (Context Owner)
+### Writes (Authorized Context Caller)
 
 #### `create_profile(context_id, owner, metadata_uri) -> EntityId`
 Mints a new profile id, records it under `owner`, and appends to the owner's profile list. `metadata_uri` may be empty. Returns the new id.

@@ -5,7 +5,7 @@ Context registry contract. A **context** is an on-chain namespace identified by 
 - **Owner** — typically an EOA or multisig. Governs the context: rotates ownership, manages operator membership.
 - **Operator(s)** — contract addresses authorized to perform writes scoped to this context (e.g. the registry calling `reputation::submit_review`). A context can have any number of operators.
 
-Consumer contracts (reputation, threads, disputes) call `is_owner(ctx, caller())` to gate writes. The check returns true for **either** the owner or any approved operator, so EOAs interacting directly with a consumer and contract operators interacting on behalf of a context both pass.
+Consumer contracts (reputation, profiles, threads, disputes) call `is_authorized(ctx, caller())` to gate writes. The check returns true for **either** the owner or any approved operator, so EOAs interacting directly with a consumer and contract operators interacting on behalf of a context both pass.
 
 ## Storage
 
@@ -35,7 +35,7 @@ Returns the owner address for a context, or the zero address if unregistered.
 Returns true if `address` is the owner or an approved operator. Preferred entry point for new consumer contracts.
 
 ### `is_owner(context_id, address) -> bool`
-Back-compat alias for `is_authorized` — same semantics. Existing call sites in reputation, threads, and disputes use this name; new consumers should prefer `is_authorized`.
+Back-compat alias for `is_authorized` — same semantics. New consumers should prefer `is_authorized`.
 
 ## Consumer migration recipe
 
@@ -50,4 +50,4 @@ No contract-side hatch on the outgoing operator is required — context-level au
 
 ## CDM
 
-This is the base contract — `reputation`, `threads`, and `disputes` all depend on it via `contexts::cdm_reference()` to verify context-level authorization before performing writes.
+This is the base contract — `reputation`, `profiles`, `threads`, and `disputes` all depend on it via `contexts::cdm_reference()` to verify context-level authorization before performing writes.

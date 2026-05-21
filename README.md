@@ -11,19 +11,19 @@ A suite of common on-chain system contracts for the Polkadot contract ecosystem,
 ## Contracts
 
 ### `contexts` (`@polkadot/contexts`)
-Context registry — registers and manages context ownership. A context is an on-chain namespace owned by an address, used by other contracts for access control.
+Context registry — registers and manages context owners and approved operators. A context is an on-chain namespace used by other contracts for access control.
 
 ### `reputation` (`@polkadot/reputation`)
-Reputation system — manages reviews and ratings for entities within contexts. Depends on `contexts` via CDM for ownership verification.
+Reputation system — manages reviews and ratings for entities within contexts. Depends on `contexts` via CDM for authorization checks.
 
 ### `disputes` (`@polkadot/disputes`)
-Dispute system — manages the lifecycle of disputes (open, judge, resolve/dismiss) within contexts. Depends on `contexts` via CDM for ownership verification.
+Dispute system — manages the lifecycle of disputes (open, judge, resolve/dismiss) within contexts. Depends on `contexts` via CDM for authorization checks.
 
 ```
 reputation --depends on--> contexts <--depends on-- disputes
                               |
-                       [context ownership]
-                    ContextId -> Address
+                    [context authorization]
+             ContextId -> owner + operators
 ```
 
 ## Shared Types (`src/lib`)
@@ -31,7 +31,7 @@ reputation --depends on--> contexts <--depends on-- disputes
 Common types used across contracts:
 - `UUID` — 32-byte identifier (`[u8; 32]`)
 - `EntityId` — identifier for any unique entity in the system
-- `ContextId` — identifier for a context owned & controlled by an address
+- `ContextId` — identifier for a context controlled by an owner and approved operators
 
 ## Usage
 

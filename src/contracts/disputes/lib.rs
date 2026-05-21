@@ -80,16 +80,16 @@ struct Storage {
     decisions: Mapping<(ContextId, EntityId), u8>,
 }
 
-fn require_context_owner(context_id: ContextId) {
+fn require_context_authorized(context_id: ContextId) {
     let ctx_reg = match Storage::context_registry().get() {
         Some(r) => r,
         None => revert(b"NotInitialized"),
     };
-    let is_owner = match ctx_reg.is_owner(context_id, caller()) {
+    let is_authorized = match ctx_reg.is_authorized(context_id, caller()) {
         Ok(v) => v,
         Err(_) => revert(b"ContextsCallFailed"),
     };
-    if !is_owner {
+    if !is_authorized {
         revert(b"Unauthorized");
     }
 }
@@ -146,11 +146,11 @@ mod disputes {
         Ok(())
     }
 
-    // ── Instructions Management (Context Owner) ──────────────────────
+    // ── Instructions Management (Authorized Context Caller) ──────────
 
     #[pvm::method]
     pub fn add_instruction(context_id: ContextId, metadata_uri: String, voting_rule_id: u8) {
-        require_context_owner(context_id);
+        require_context_authorized(context_id);
 
         if voting_rule_id != RULE_BINARY && voting_rule_id != RULE_RANGE {
             revert(b"InvalidVotingRule");
@@ -182,7 +182,7 @@ mod disputes {
         }
     }
 
-    // ── Dispute Lifecycle (Context Owner) ────────────────────────────
+    // ── Dispute Lifecycle (Authorized Context Caller) ────────────────
 
     #[pvm::method]
     pub fn open_dispute(
@@ -193,7 +193,7 @@ mod disputes {
         claim_uri: String,
         instruction_index: u32,
     ) {
-        require_context_owner(context_id);
+        require_context_authorized(context_id);
 
         // Verify the instruction exists
         let count = Storage::instruction_count().get(&context_id).unwrap_or(0);
@@ -231,7 +231,7 @@ mod disputes {
         dispute_id: EntityId,
         counter_claim_uri: String,
     ) {
-        require_context_owner(context_id);
+        require_context_authorized(context_id);
 
         let mut dispute = load_dispute(context_id, dispute_id);
         if dispute.status != 0 {
@@ -245,7 +245,7 @@ mod disputes {
 
     #[pvm::method]
     pub fn begin_voting(context_id: ContextId, dispute_id: EntityId) {
-        require_context_owner(context_id);
+        require_context_authorized(context_id);
 
         let mut dispute = load_dispute(context_id, dispute_id);
         if dispute.status > 1 {
@@ -263,7 +263,7 @@ mod disputes {
         decision: u8,
         resolution_uri: String,
     ) {
-        require_context_owner(context_id);
+        require_context_authorized(context_id);
 
         let mut dispute = load_dispute(context_id, dispute_id);
         if dispute.status >= 3 {
@@ -380,11 +380,11 @@ mod disputes {
         }
     }
 
-    // ── Cleanup (Context Owner) ──────────────────────────────────────
+    // ── Cleanup (Authorized Context Caller) ──────────────────────────
 
     #[pvm::method]
     pub fn delete_dispute(context_id: ContextId, dispute_id: EntityId) {
-        require_context_owner(context_id);
+        require_context_authorized(context_id);
 
         let dispute = load_dispute(context_id, dispute_id);
         if dispute.status != 0 && dispute.status != 3 {

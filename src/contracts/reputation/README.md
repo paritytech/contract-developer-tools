@@ -1,10 +1,10 @@
 # Reputation (`@polkadot/reputation`)
 
-Reputation contract. Stores reviews (rating + comment URI) for entities within contexts. All write operations are gated by context ownership — only the context owner can submit or delete reviews. Each address can leave one review per entity per context; submitting again updates the existing review in-place.
+Reputation contract. Stores reviews (rating + comment URI) for entities within contexts. All write operations are gated by context authorization — only the context owner or an approved operator can submit or delete reviews. Each address can leave one review per entity per context; submitting again updates the existing review in-place.
 
 ## Dependencies
 
-- `@polkadot/contexts` — used via CDM to verify the caller owns the context
+- `@polkadot/contexts` — used via CDM to verify the caller is authorized for the context
 
 ## Storage
 
@@ -19,10 +19,10 @@ Reviews are indexed by `(context_id, entity_id, index)` for efficient paging. Th
 ## Methods
 
 ### `submit_review(context_id, reviewer, entity, rating, comment_uri)`
-Creates or updates a review. If the reviewer already has a review for this entity, the existing review is updated in-place and the running average is adjusted. Caller must be the context owner.
+Creates or updates a review. If the reviewer already has a review for this entity, the existing review is updated in-place and the running average is adjusted. Caller must be authorized for the context.
 
 ### `delete_review(context_id, reviewer, entity)`
-Removes a review. Uses swap-and-pop internally — the last review in the index fills the deleted slot, so indices stay dense. Caller must be the context owner.
+Removes a review. Uses swap-and-pop internally — the last review in the index fills the deleted slot, so indices stay dense. Caller must be authorized for the context.
 
 ### `get_review_at(context_id, entity, index) -> Review`
 Returns the review at the given index for an entity. Returns a default (zero) review if the index is out of range. Use `get_metrics` to get the total count for paging.

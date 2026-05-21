@@ -1,10 +1,10 @@
 # Threads (`@polkadot/threads`)
 
-Generic post-graph contract. A **post** is a content URI published by an **author** under zero or more **parents**. Parents are just `EntityId`s — the contract doesn't care what they represent, so the same primitive serves feeds (parent = topic), replies (parent = another post), and walls (parent = a profile). All writes are gated by context ownership.
+Generic post-graph contract. A **post** is a content URI published by an **author** under zero or more **parents**. Parents are just `EntityId`s — the contract doesn't care what they represent, so the same primitive serves feeds (parent = topic), replies (parent = another post), and walls (parent = a profile). All writes are gated by context authorization.
 
 ## Dependencies
 
-- `@polkadot/contexts` — used via CDM to verify the caller owns the context
+- `@polkadot/contexts` — used via CDM to verify the caller is authorized for the context
 - `common::generate_id` — derives new post ids from a per-context nonce
 
 ## Core Concepts
@@ -35,7 +35,7 @@ Counts are monotonic. They index into dense `_at` slots, so `get_*_posts_page` c
 
 `delete_post` removes the `info` record but leaves the index slots in place. This keeps offsets stable across deletions — a client paging a feed never has its cursor invalidated. Page getters skip entries whose `info` is absent but still advance `next_offset` past the empty slot, so pagination completes in bounded time.
 
-Access control for deletes is enforced at the app layer before calling the contract — the contract itself only checks context ownership.
+Access control for deletes is enforced at the app layer before calling the contract — the contract itself only checks context authorization.
 
 ## Storage
 
@@ -50,7 +50,7 @@ Access control for deletes is enforced at the app layer before calling the contr
 
 ## Methods
 
-### Writes (Context Owner)
+### Writes (Authorized Context Caller)
 
 #### `post(context_id, author, parents, content_uri) -> EntityId`
 Publishes a post and returns its new id. Indexes the post under each parent and under the author. Zero parents is allowed. Reverts with `DuplicateParent` if `parents` contains the same id twice.
