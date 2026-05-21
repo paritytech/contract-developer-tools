@@ -40,6 +40,16 @@ pub struct ProfilePage {
     pub done: bool,
 }
 
+/// Profile + the owner's primary name resolved via `@polkadot/names`.
+/// `primary_name` is the empty string when the owner has no primary set.
+#[derive(Default, pvm::SolAbi)]
+pub struct ProfileWithName {
+    pub profile_id: EntityId,
+    pub owner: Address,
+    pub metadata_uri: String,
+    pub primary_name: String,
+}
+
 #[pvm::storage]
 struct Storage {
     /// Cached reference to `@polkadot/contexts` for owner-gating.
@@ -70,7 +80,7 @@ fn profile_from(profile_id: EntityId, data: ProfileData) -> Profile {
 mod profiles {
     use super::{
         pvm, profile_from, Address, ContextId, EntityId, Profile, ProfileData, ProfilePage,
-        Storage, String, MAX_PAGE_LIMIT,
+        ProfileWithName, Storage, String, MAX_PAGE_LIMIT,
     };
     use alloc::vec::Vec;
     use common::{generate_id, revert};
@@ -148,6 +158,27 @@ mod profiles {
         Storage::info()
             .get(&(context_id, profile_id))
             .map(|d| profile_from(profile_id, d))
+    }
+
+    /// Like `get_profile_info`, plus the owner's primary name resolved via
+    /// `@polkadot/names`. `primary_name` is `""` when none is set. Reverts
+    /// `NamesCallFailed` if the names registry is unreachable.
+    #[pvm::method]
+    pub fn get_profile_info_with_name(
+        context_id: ContextId,
+        profile_id: EntityId,
+    ) -> Option<ProfileWithName> {
+        let data = Storage::info().get(&(context_id, profile_id))?;
+        let primary_name = match names::cdm_reference().primary_of(context_id, data.owner) {
+            Ok(s) => s,
+            Err(_) => revert(b"NamesCallFailed"),
+        };
+        Some(ProfileWithName {
+            profile_id,
+            owner: data.owner,
+            metadata_uri: data.metadata_uri,
+            primary_name,
+        })
     }
 
     /// Cheap owner lookup — use this when you only need to authenticate a

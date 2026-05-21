@@ -16,7 +16,8 @@
       "@mock/reputation": "latest",
       "@mock/disputes": "latest",
       "@polkadot/profiles": "latest",
-      "@polkadot/threads": "latest"
+      "@polkadot/threads": "latest",
+      "@polkadot/names": "latest"
     }
   },
   "contracts": {
@@ -1190,6 +1191,359 @@
           }
         ],
         "metadataCid": "bafk2bzaceboxw7mfzanxhsm5pfbj6ccv5kigimn2xph7lcdrgpi7obhy7hmie"
+      },
+      "@polkadot/names": {
+        "version": 1,
+        "address": "0x52743B03a53E2F542E6A70EC3FFb5F6783a3817D",
+        "abi": [
+          {
+            "type": "constructor",
+            "inputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "registerName",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "name": "owner",
+                "type": "address"
+              },
+              {
+                "name": "metadata_uri",
+                "type": "string"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "transferName",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "name": "new_owner",
+                "type": "address"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "updateMetadata",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "name": "metadata_uri",
+                "type": "string"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "releaseName",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "name",
+                "type": "string"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "setPrimary",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "name",
+                "type": "string"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "clearPrimary",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "resolve",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "name",
+                "type": "string"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "address"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getNameInfo",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "name",
+                "type": "string"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "tuple",
+                "components": [
+                  {
+                    "name": "isSome",
+                    "type": "bool"
+                  },
+                  {
+                    "name": "value",
+                    "type": "tuple",
+                    "components": [
+                      {
+                        "name": "name",
+                        "type": "string"
+                      },
+                      {
+                        "name": "owner",
+                        "type": "address"
+                      },
+                      {
+                        "name": "metadata_uri",
+                        "type": "string"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "primaryOf",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "owner",
+                "type": "address"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "string"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "isAvailable",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "name",
+                "type": "string"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "bool"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "maxNameLen",
+            "inputs": [],
+            "outputs": [
+              {
+                "name": "",
+                "type": "uint32"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getNameCount",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "owner",
+                "type": "address"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "uint32"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getNameAt",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "owner",
+                "type": "address"
+              },
+              {
+                "name": "index",
+                "type": "uint32"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "tuple",
+                "components": [
+                  {
+                    "name": "isSome",
+                    "type": "bool"
+                  },
+                  {
+                    "name": "value",
+                    "type": "string"
+                  }
+                ]
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getNamesPage",
+            "inputs": [
+              {
+                "name": "context_id",
+                "type": "bytes32"
+              },
+              {
+                "name": "owner",
+                "type": "address"
+              },
+              {
+                "name": "offset",
+                "type": "uint32"
+              },
+              {
+                "name": "limit",
+                "type": "uint32"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "tuple",
+                "components": [
+                  {
+                    "name": "names",
+                    "type": "tuple[]",
+                    "components": [
+                      {
+                        "name": "name",
+                        "type": "string"
+                      },
+                      {
+                        "name": "owner",
+                        "type": "address"
+                      },
+                      {
+                        "name": "metadata_uri",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "next_offset",
+                    "type": "uint32"
+                  },
+                  {
+                    "name": "done",
+                    "type": "bool"
+                  }
+                ]
+              }
+            ],
+            "stateMutability": "view"
+          }
+        ],
+        "metadataCid": "bafk2bzacea3bdce7yfllxq44si7um7mk7iwgbk4zs3tdjtknccjxyh5kklboe"
       }
     }
   }

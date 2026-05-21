@@ -1,8 +1,8 @@
 [package]
-name = "profiles"
+name = "names"
 version.workspace = true
 edition.workspace = true
-description = "Profiles contract - maps addresses to one-to-many profile EntityIds with metadata, scoped by context"
+description = "Names contract - maps human-readable names to addresses within a context, with metadata and reverse primary lookup"
 authors.workspace = true
 homepage.workspace = true
 
@@ -10,7 +10,7 @@ homepage.workspace = true
 path = "lib.rs"
 
 [[bin]]
-name = "profiles"
+name = "names"
 path = "lib.rs"
 
 [dependencies]
@@ -21,4 +21,3 @@ parity-scale-codec = { workspace = true }
 picoalloc = { workspace = true }
 common = { path = "../../lib" }
 contexts = { path = "../contexts" }
-names = { path = "../names" }

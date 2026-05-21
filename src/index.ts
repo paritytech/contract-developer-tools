@@ -25,8 +25,9 @@ const cdm = createCdm();
 const contexts = cdm.getContract("@polkadot/contexts");
 const reputation = cdm.getContract("@polkadot/reputation");
 const disputes = cdm.getContract("@polkadot/disputes");
+const names = cdm.getContract("@polkadot/names");
 
-// TODO: Add validation logic for contexts, reputation, and disputes
+// TODO: Add validation logic for contexts, reputation, disputes, and names
 
 // --- Clean up ---
 cdm.destroy();
