@@ -68,8 +68,7 @@ mod contexts {
         Storage::context_operators().contains(&(context_id, address))
     }
 
-    // Back-compat alias for `is_authorized`. Existing call sites in
-    // reputation/threads/disputes use this name; new consumers should prefer
+    // Back-compat alias for `is_authorized`. New consumers should prefer
     // `is_authorized`.
     #[pvm::method]
     pub fn is_owner(context_id: ContextId, address: Address) -> bool {

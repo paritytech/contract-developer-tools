@@ -1,17 +1,17 @@
 # Disputes (`@polkadot/disputes`)
 
-Decentralized dispute resolution contract with collective voting. Context owners (apps) register dispute types up front, then submit individual cases that community voters resolve through consensus.
+Decentralized dispute resolution contract with collective voting. Authorized context callers (owners or approved operators) register dispute types up front, then submit individual cases that community voters resolve through consensus.
 
 ## Dependencies
 
-- `@polkadot/contexts` — used via CDM to verify the caller owns the context
+- `@polkadot/contexts` — used via CDM to verify the caller is authorized for the context
 - `common::math::RunningAverage` — vote tallying
 
 ## Core Concepts
 
 ### Instructions (per-context dispute types)
 
-At setup time, a context owner registers **instructions** — a catalog of dispute types their app supports. Each instruction has:
+At setup time, an authorized context caller registers **instructions** — a catalog of dispute types their app supports. Each instruction has:
 - `metadata_uri` — describes what voters are deciding (e.g., "What % of escrow should the client receive?")
 - `voting_rule_id` — which voting rule applies (`0` = Binary, `1` = Range)
 
@@ -29,7 +29,7 @@ For example, a gig marketplace might register:
 
 ### Disputes (cases)
 
-When opening a dispute, the context owner specifies which instruction (by index) applies. Each dispute gets one instruction, one tally, and one decision.
+When opening a dispute, an authorized context caller specifies which instruction (by index) applies. Each dispute gets one instruction, one tally, and one decision.
 
 ### Lifecycle
 
@@ -39,7 +39,7 @@ Open (0) → [counter-evidence] → Countered (1) → [begin_voting] → Voting 
 
 - Counter-evidence is optional — `begin_voting` works from status 0 or 1
 - After 4 unique voters (`REQUIRED_VOTES = 4`), auto-resolves
-- Context owner can admin-override with `provide_judgment` at any pre-resolved status
+- Authorized context callers can admin-override with `provide_judgment` at any pre-resolved status
 - Voters can update their vote before resolution (swaps old value in the tally)
 
 ## Status Codes
@@ -66,7 +66,7 @@ Open (0) → [counter-evidence] → Countered (1) → [begin_voting] → Voting 
 
 ## Methods
 
-### Instructions Management (Context Owner)
+### Instructions Management (Authorized Context Caller)
 
 #### `add_instruction(context_id, metadata_uri, voting_rule_id)`
 Append a new dispute type to the context's instruction catalog. `voting_rule_id` must be `0` (Binary) or `1` (Range).
@@ -77,7 +77,7 @@ Returns the number of registered instructions for a context.
 #### `get_instruction(context_id, index) -> InstructionInfo`
 Returns the metadata URI and voting rule for an instruction. Reverts if index is out of bounds.
 
-### Dispute Lifecycle (Context Owner)
+### Dispute Lifecycle (Authorized Context Caller)
 
 #### `open_dispute(context_id, dispute_id, claimant, against, claim_uri, instruction_index)`
 Opens a new dispute referencing an instruction from the context's catalog. Reverts if instruction doesn't exist or dispute ID is already taken.
@@ -114,7 +114,7 @@ Returns the number of unique voters on a dispute.
 #### `get_dispute_info(context_id, dispute_id) -> DisputeInfo`
 Returns status, vote count, claimant address, against entity, and instruction index. Reverts if not found.
 
-### Cleanup (Context Owner)
+### Cleanup (Authorized Context Caller)
 
 #### `delete_dispute(context_id, dispute_id)`
 Removes a dispute from storage. Only allowed for open (0) or resolved (3) disputes.

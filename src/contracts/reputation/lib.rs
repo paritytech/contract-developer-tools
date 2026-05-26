@@ -53,11 +53,11 @@ mod reputation {
             Some(r) => r,
             None => revert(b"NotInitialized"),
         };
-        let is_owner = match ctx_reg.is_owner(context_id, caller()) {
+        let is_authorized = match ctx_reg.is_authorized(context_id, caller()) {
             Ok(v) => v,
             Err(_) => revert(b"ContextsCallFailed"),
         };
-        if !is_owner {
+        if !is_authorized {
             revert(b"Unauthorized");
         }
         let mut avg = Storage::metrics()
@@ -94,10 +94,10 @@ mod reputation {
     #[pvm::method]
     pub fn delete_review(context_id: ContextId, reviewer: Address, entity: EntityId) {
         let ctx_reg = Storage::context_registry().get().expect("not initialized");
-        let is_owner = ctx_reg
-            .is_owner(context_id, caller())
+        let is_authorized = ctx_reg
+            .is_authorized(context_id, caller())
             .expect("cross-contract call failed");
-        if !is_owner {
+        if !is_authorized {
             revert(b"Unauthorized");
         }
         if let Some(pos) = Storage::address_review_index().get(&(context_id, reviewer, entity)) {

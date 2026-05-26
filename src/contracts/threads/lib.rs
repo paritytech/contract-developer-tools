@@ -48,7 +48,7 @@ pub struct PostPage {
 
 #[pvm::storage]
 struct Storage {
-    /// Cached reference to `@polkadot/contexts` for owner-gating.
+    /// Cached reference to `@polkadot/contexts` for authorization checks.
     context_registry: contexts::Reference,
 
     /// Per-context monotonic nonce used to generate new post ids.
@@ -109,17 +109,17 @@ mod threads {
         Ok(())
     }
 
-    /// Revert unless the caller is the owner of `context_id`.
-    fn ensure_context_owner(context_id: ContextId) {
+    /// Revert unless the caller is authorized for `context_id`.
+    fn ensure_context_authorized(context_id: ContextId) {
         let ctx_reg = match Storage::context_registry().get() {
             Some(r) => r,
             None => revert(b"NotInitialized"),
         };
-        let is_owner = match ctx_reg.is_owner(context_id, caller()) {
+        let is_authorized = match ctx_reg.is_authorized(context_id, caller()) {
             Ok(v) => v,
             Err(_) => revert(b"ContextsCallFailed"),
         };
-        if !is_owner {
+        if !is_authorized {
             revert(b"Unauthorized");
         }
     }
@@ -135,7 +135,7 @@ mod threads {
         parents: Vec<EntityId>,
         content_uri: String,
     ) -> EntityId {
-        ensure_context_owner(context_id);
+        ensure_context_authorized(context_id);
 
         // Reject dupes in-place so the per-parent index can't double-count.
         let mut i = 0;
@@ -193,7 +193,7 @@ mod threads {
     /// App layer enforces "is the caller allowed to delete?" before calling.
     #[pvm::method]
     pub fn delete_post(context_id: ContextId, post_id: EntityId) {
-        ensure_context_owner(context_id);
+        ensure_context_authorized(context_id);
         if !Storage::info().contains(&(context_id, post_id)) {
             revert(b"PostNotFound");
         }

@@ -42,7 +42,7 @@ pub struct ProfilePage {
 
 #[pvm::storage]
 struct Storage {
-    /// Cached reference to `@polkadot/contexts` for owner-gating.
+    /// Cached reference to `@polkadot/contexts` for authorization checks.
     context_registry: contexts::Reference,
 
     /// Per-context monotonic nonce used to generate new profile ids.
@@ -82,17 +82,17 @@ mod profiles {
         Ok(())
     }
 
-    /// Revert unless the caller is the owner of `context_id`.
-    fn ensure_context_owner(context_id: ContextId) {
+    /// Revert unless the caller is authorized for `context_id`.
+    fn ensure_context_authorized(context_id: ContextId) {
         let ctx_reg = match Storage::context_registry().get() {
             Some(r) => r,
             None => revert(b"NotInitialized"),
         };
-        let is_owner = match ctx_reg.is_owner(context_id, caller()) {
+        let is_authorized = match ctx_reg.is_authorized(context_id, caller()) {
             Ok(v) => v,
             Err(_) => revert(b"ContextsCallFailed"),
         };
-        if !is_owner {
+        if !is_authorized {
             revert(b"Unauthorized");
         }
     }
@@ -105,7 +105,7 @@ mod profiles {
         owner: Address,
         metadata_uri: String,
     ) -> EntityId {
-        ensure_context_owner(context_id);
+        ensure_context_authorized(context_id);
 
         let nonce = Storage::profile_count().get(&context_id).unwrap_or(0);
         let profile_id: EntityId = generate_id(nonce);
@@ -129,10 +129,10 @@ mod profiles {
 
     /// Replace the metadata URI of an existing profile. Reverts if not found.
     /// Auth of "is caller really the owner?" is the app-layer's job — this
-    /// system contract only enforces the context-owner gate.
+    /// system contract only enforces the context authorization gate.
     #[pvm::method]
     pub fn update_profile(context_id: ContextId, profile_id: EntityId, metadata_uri: String) {
-        ensure_context_owner(context_id);
+        ensure_context_authorized(context_id);
         let mut data = match Storage::info().get(&(context_id, profile_id)) {
             Some(d) => d,
             None => revert(b"ProfileNotFound"),

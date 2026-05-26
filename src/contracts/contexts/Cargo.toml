@@ -2,7 +2,7 @@
 name = "contexts"
 version.workspace = true
 edition.workspace = true
-description = "Context registry contract - registers and manages context ownership"
+description = "Context registry contract - manages context owners and operators"
 authors.workspace = true
 homepage.workspace = true
 
