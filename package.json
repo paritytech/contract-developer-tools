@@ -9,11 +9,18 @@
         "setup:local": "bun src/setup-local.ts",
         "deploy:contexts": "bun src/deploy-contexts.ts",
         "test:contexts": "bun src/test-contexts.ts",
+        "register:dotns": "bun scripts/register-dotns.ts",
+        "register:dotns:dry-run": "bun scripts/register-dotns.ts --dry-run",
         "dev": "turbo dev",
         "build": "turbo build",
         "clean": "turbo clean"
     },
     "dependencies": {
+        "@parity/cdm-builder": "^3.1.4",
+        "@parity/cdm-env": "^2.0.4",
+        "@parity/product-sdk-cloud-storage": "^0.5.4",
+        "@parity/product-sdk-contracts": "^0.7.1",
+        "@parity/product-sdk-tx": "^0.2.8",
         "@dotdm/cdm": "latest",
         "@polkadot-api/descriptors": "file:.papi/descriptors",
         "@polkadot-api/json-rpc-provider": "^0.2.0",
