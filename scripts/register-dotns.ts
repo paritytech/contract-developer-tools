@@ -3,20 +3,16 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  CONTRACTS_REGISTRY_ABI,
-  GAS_LIMIT,
-  MetadataPublisher,
-  STORAGE_DEPOSIT_LIMIT,
-} from "@parity/cdm-builder";
+import { CONTRACTS_REGISTRY_ABI, MetadataPublisher, STORAGE_DEPOSIT_LIMIT } from "@parity/cdm-builder";
 import { createCdmChainClient, getChainPreset, prepareSignerFromSuri, ss58Address } from "@parity/cdm-env";
+import { BulletinPreparer, DEFAULT_CLIENT_CONFIG } from "@parity/product-sdk-cloud-storage";
 import { createContractFromClient } from "@parity/product-sdk-contracts";
 import { batchSubmitAndWatch } from "@parity/product-sdk-tx";
 
 const args = process.argv.slice(2);
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const defaultManifest = resolve(scriptDir, "dotns-assets/metadata.json");
-const usage = "Usage: bun scripts/register-dotns.ts --suri <suri> [--dry-run] [--name paseo]";
+const usage = "Usage: bun scripts/register-dotns.ts --suri <suri> [--dry-run] [--name paseo] [--batch-size 4] [--gas-buffer-percent 100]";
 if (args.includes("--help") || args.includes("-h")) {
   console.log(usage);
   process.exit(0);
@@ -36,13 +32,36 @@ const readAbi = (path: string) => {
   if (!abi?.length) throw new Error(`Empty ABI: ${path}`);
   return abi;
 };
+const bulletinPreparer = new BulletinPreparer();
+const computeBulletinCid = async (data: Uint8Array) => {
+  if (data.length > DEFAULT_CLIENT_CONFIG.chunkingThreshold) {
+    const prepared = await bulletinPreparer.prepareStoreChunked(data);
+    const cid = prepared.manifest?.cid;
+    if (!cid) throw new Error("Bulletin CID precompute did not produce a manifest CID");
+    return cid.toString();
+  }
+  const { cid } = await bulletinPreparer.prepareStore(data);
+  return cid.toString();
+};
+const formatWeight = (w: { ref_time: bigint; proof_size: bigint }) => `${w.ref_time}/${w.proof_size}`;
+const bufferWeight = (w: { ref_time: bigint; proof_size: bigint }, percent: number) => {
+  const scale = BigInt(100 + percent);
+  return {
+    ref_time: (w.ref_time * scale + 99n) / 100n,
+    proof_size: (w.proof_size * scale + 99n) / 100n,
+  };
+};
 
 const name = opt(["--name", "-n"], "paseo")!;
 const suri = opt(["--suri"]);
 const dryRun = args.includes("--dry-run");
+const batchSize = Number(opt(["--batch-size"], "4"));
+const gasBufferPercent = Number(opt(["--gas-buffer-percent"], "100"));
 const manifestPath = resolve(opt(["--metadata"], defaultManifest)!);
 const manifest = readJson(manifestPath);
 if (manifest.version !== 1 || !manifest.contracts?.length) throw new Error(`Invalid DotNS manifest: ${manifestPath}`);
+if (!Number.isInteger(batchSize) || batchSize < 1) throw new Error("--batch-size must be a positive integer");
+if (!Number.isInteger(gasBufferPercent) || gasBufferPercent < 0) throw new Error("--gas-buffer-percent must be a non-negative integer");
 
 const manifestDir = dirname(manifestPath);
 const publishedAt = new Date().toISOString();
@@ -81,6 +100,8 @@ console.log(`Asset Hub       ${assethubUrl}`);
 console.log(`Bulletin        ${bulletinUrl}`);
 console.log(`Registry        ${registryAddress}`);
 console.log(`Contracts       ${contracts.length}`);
+console.log(`Batch size      ${batchSize}`);
+console.log(`Gas buffer      ${gasBufferPercent}%`);
 if (dryRun) {
   contracts.forEach((contract) => console.log(`${contract.cdmPackage.padEnd(32)} ${contract.address}`));
   process.exit(0);
@@ -101,28 +122,54 @@ try {
   ) as any;
 
   console.log(`Signer          ${origin}`);
-  console.log("Publishing metadata to Bulletin...");
-  const { cids } = await new MetadataPublisher(signer, client.bulletin, client.raw.bulletin).publishBatch(
-    contracts.map((contract) => contract.metadata),
-  );
+  console.log("Precomputing Bulletin CIDs...");
+  const metadataBytes = contracts.map((contract) => new TextEncoder().encode(JSON.stringify(contract.metadata)));
+  const cids = await Promise.all(metadataBytes.map(computeBulletinCid));
+  contracts.forEach((contract, i) => console.log(`${contract.cdmPackage.padEnd(32)} ${cids[i]}`));
 
-  console.log("Registering addresses in CDM registry...");
-  const calls = await Promise.all(
-    contracts.map((contract, i) =>
-      registry.publishLatest.prepare(contract.cdmPackage, contract.address, cids[i], {
+  console.log("Preparing registry calls...");
+  const calls = [];
+  for (let i = 0; i < contracts.length; i++) {
+    const contract = contracts[i];
+    const query = await registry.publishLatest.query(contract.cdmPackage, contract.address, cids[i], { origin });
+    if (!query.success || !query.gasRequired) {
+      throw new Error(`Registry dry-run failed for ${contract.cdmPackage}: ${String(query.value)}`);
+    }
+    const gasLimit = bufferWeight(query.gasRequired, gasBufferPercent);
+    console.log(`${contract.cdmPackage.padEnd(32)} gas=${formatWeight(query.gasRequired)} buffered=${formatWeight(gasLimit)}`);
+    calls.push(
+      await registry.publishLatest.prepare(contract.cdmPackage, contract.address, cids[i], {
         origin,
-        gasLimit: { ref_time: GAS_LIMIT.refTime, proof_size: GAS_LIMIT.proofSize },
+        gasLimit,
         storageDepositLimit: STORAGE_DEPOSIT_LIMIT,
       }),
-    ),
-  );
-  const result = await batchSubmitAndWatch(calls, client.assetHub as any, signer, {
-    mode: "batch_all",
-    waitFor: "best-block",
-  });
+    );
+  }
 
-  contracts.forEach((contract, i) => console.log(`${contract.cdmPackage.padEnd(32)} ${cids[i]}`));
-  console.log(`Registered in ${result.txHash}`);
+  const publish = new MetadataPublisher(signer, client.bulletin, client.raw.bulletin)
+    .publishBatch(contracts.map((contract) => contract.metadata))
+    .then((result) => {
+      result.cids.forEach((cid, i) => {
+        if (cid !== cids[i]) throw new Error(`CID mismatch for ${contracts[i].cdmPackage}: expected ${cids[i]}, got ${cid}`);
+      });
+      console.log("Published metadata to Bulletin.");
+      return result;
+    });
+  const register = (async () => {
+    console.log("Registering addresses in CDM registry...");
+    for (let i = 0; i < calls.length; i += batchSize) {
+      const batch = calls.slice(i, i + batchSize);
+      const names = contracts.slice(i, i + batchSize).map((contract) => contract.cdmPackage).join(", ");
+      console.log(`Submitting batch ${i / batchSize + 1}/${Math.ceil(calls.length / batchSize)}: ${names}`);
+      const result = await batchSubmitAndWatch(batch, client.assetHub as any, signer, {
+        mode: "batch_all",
+        waitFor: "best-block",
+      });
+      console.log(`Registered batch ${i / batchSize + 1}/${Math.ceil(calls.length / batchSize)} ${result.txHash}`);
+    }
+  })();
+
+  await Promise.all([publish, register]);
 } finally {
   client.destroy();
 }
