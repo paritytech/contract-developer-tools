@@ -1,3 +1,6 @@
+> [!WARNING]
+> The following is a prototype, reference implementation, and proof-of-concept. This open source code is provided for research, experimentation, and developer education only. This code has not been audited, is actively experimental, and may contain bugs, vulnerabilities, or incomplete features. Use at your own risk.
+
 # Contract Developer Tools
 
 A suite of common on-chain system contracts for the Polkadot contract ecosystem, built with [cargo-pvm-contract](https://github.com/nicetomeetyou-github/cargo-pvm-contract) and managed with [CDM](https://github.com/nicetomeetyou-github/contract-dependency-manager) (Contract Dependency Manager).
