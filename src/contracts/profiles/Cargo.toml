@@ -6,6 +6,10 @@ description = "Profiles contract - maps addresses to one-to-many profile EntityI
 authors.workspace = true
 homepage.workspace = true
 
+[package.metadata.cdm]
+package = "@polkadot/profiles"
+dependencies = ["@polkadot/contexts"]
+
 [lib]
 path = "lib.rs"
 

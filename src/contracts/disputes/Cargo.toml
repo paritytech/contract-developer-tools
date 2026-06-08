@@ -6,6 +6,10 @@ description = "Disputes contract - manages dispute lifecycle within contexts"
 authors.workspace = true
 homepage.workspace = true
 
+[package.metadata.cdm]
+package = "@mock/disputes"
+dependencies = ["@polkadot/contexts"]
+
 [lib]
 path = "lib.rs"
 

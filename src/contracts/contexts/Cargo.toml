@@ -6,6 +6,9 @@ description = "Context registry contract - manages context owners and operators"
 authors.workspace = true
 homepage.workspace = true
 
+[package.metadata.cdm]
+package = "@polkadot/contexts"
+
 [lib]
 path = "lib.rs"
 

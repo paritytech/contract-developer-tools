@@ -6,6 +6,10 @@ description = "Threads contract - indexes posts by parent and author, forming a 
 authors.workspace = true
 homepage.workspace = true
 
+[package.metadata.cdm]
+package = "@polkadot/threads"
+dependencies = ["@polkadot/contexts"]
+
 [lib]
 path = "lib.rs"
 

@@ -6,6 +6,10 @@ description = "Reputation contract - manages reviews and ratings within contexts
 authors.workspace = true
 homepage.workspace = true
 
+[package.metadata.cdm]
+package = "@mock/reputation"
+dependencies = ["@polkadot/contexts"]
+
 [lib]
 path = "lib.rs"
 
