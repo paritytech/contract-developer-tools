@@ -1,5 +1,12 @@
 # Multicall3
 
-Generic arbitrary-target Multicall3 deployment for read aggregation and tooling support.
+A standard [Multicall3](https://github.com/mds1/multicall3) deployment for batching calls in a single transaction. Generic infrastructure — not dotNS-specific and not an authorization surface.
 
-The address is dotNS-specific and deterministic for this deployment set. It is not the common `0xcA11...` singleton.
+## What it does
+
+Aggregates an array of calls to arbitrary targets: `aggregate3` / `aggregate3Value` (per-call `allowFailure`), plus the legacy `aggregate`, `tryAggregate`, `blockAndAggregate`, `tryBlockAndAggregate`, and block-info helpers (`getBlockNumber`, `getBasefee`, `getEthBalance`, …).
+
+## Notes
+
+- **Caller context:** targets see Multicall3 as `msg.sender`, not the original account. Use it freely for read batching; only route owner-gated dotNS writes through it if the target explicitly supports that caller model.
+- This is a dotNS-specific deterministic deployment, **not** the canonical `0xcA11…` singleton.
